@@ -22,6 +22,7 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
   credentials: true,
 }));
+app.use(express.json());
 
 // Rate limiting (global) — login endpoint akan punya limiter sendiri
 app.use('/api/', rateLimit({
@@ -29,8 +30,6 @@ app.use('/api/', rateLimit({
   max: 100,
   message: { status: 'error', message: 'Terlalu banyak request, coba lagi dalam 15 menit.' },
 }));
-
-app.use(express.json());
 
 // Routes
 app.use('/api/v1/auth', authRoutes);

@@ -1,5 +1,13 @@
-// Utility functions placeholder (e.g. bcrypt helper, validator)
-module.exports = {
-  hashPassword: async (password) => password,
-  comparePassword: async (password, hashed) => true,
+const bcrypt = require('bcrypt');
+
+const SALT_ROUNDS = 10;
+
+const hashPassword = async (password) => {
+  return bcrypt.hash(password, SALT_ROUNDS);
 };
+
+const comparePassword = async (password, hashed) => {
+  return bcrypt.compare(password, hashed);
+};
+
+module.exports = { hashPassword, comparePassword };
