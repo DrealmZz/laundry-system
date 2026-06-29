@@ -22,7 +22,7 @@ CREATE TABLE customer (
     email           VARCHAR(150) UNIQUE NOT NULL,
     password        VARCHAR(255) NOT NULL,
     status_akun     VARCHAR(20)  NOT NULL DEFAULT 'aktif'
-                    CHECK (status_akun IN ('aktif', 'nonaktif')),
+                    CHECK (status_akun IN ('aktif', 'tidak aktif')),
     alamat          TEXT,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     tanggal_daftar  DATE         NOT NULL DEFAULT CURRENT_DATE
@@ -40,7 +40,7 @@ CREATE TABLE karyawan (
                     CHECK (role IN ('admin', 'kasir')),
     hak_akses       TEXT,
     status_akun     VARCHAR(20)  NOT NULL DEFAULT 'aktif'
-                    CHECK (status_akun IN ('aktif', 'nonaktif')),
+                    CHECK (status_akun IN ('aktif', 'tidak aktif')),
     alamat          TEXT,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
@@ -62,10 +62,10 @@ CREATE TABLE mesin_cuci (
     id_mesin                SERIAL PRIMARY KEY,
     kode_mesin              VARCHAR(20)    UNIQUE NOT NULL,
     tipe_mesin              VARCHAR(50)    NOT NULL
-                            CHECK (tipe_mesin IN ('washer', 'dryer')),
+                            CHECK (tipe_mesin IN ('pencucian', 'pengeringan')),
     nama_mesin              VARCHAR(100)   NOT NULL,
     status_mesin            VARCHAR(20)    NOT NULL DEFAULT 'tersedia'
-                            CHECK (status_mesin IN ('tersedia', 'dipakai', 'maintenance')),
+                            CHECK (status_mesin IN ('tersedia', 'dipakai', 'perbaikan')),
     konsumsi_kwh            NUMERIC(6,2),
     kapasitas_kg            SMALLINT,
     penggunaan_air_liter    NUMERIC(6,2)
@@ -90,13 +90,24 @@ CREATE TABLE pemesanan (
     tanggal_pesanan     DATE           NOT NULL DEFAULT CURRENT_DATE,
     shift               VARCHAR(20)    NOT NULL
                         CHECK (shift IN ('pagi', 'siang', 'sore', 'malam')),
-    status_pesanan      VARCHAR(30)    NOT NULL DEFAULT 'pending'
-                        CHECK (status_pesanan IN ('pending', 'dikonfirmasi', 'ditolak', 'selesai')),
+    status_pesanan      VARCHAR(30)    NOT NULL DEFAULT 'menunggu_konfirmasi'
+                        CHECK (status_pesanan IN (
+                            'menunggu konfirmasi',
+                            'pesanan ditolak',
+                            'menunggu pembayaran',
+                            'sudah dibayar',
+                            'diproses',
+                            'sedang di cuci',
+                            'sedang di keringkan',
+                            'sedang di setrika',
+                            'pencucian selesai',
+                            'selesai'
+                        )),
     berat_kg            NUMERIC(5,2),
     jenis_pencucian     VARCHAR(20)    NOT NULL
                         CHECK (jenis_pencucian IN ('kiloan', 'koin')),
     metode_pengambilan  VARCHAR(20)    NOT NULL
-                        CHECK (metode_pengambilan IN ('ambil_sendiri', 'delivery')),
+                        CHECK (metode_pengambilan IN ('ambil_sendiri', 'pengiriman')),
     catatan             TEXT
 );
 
@@ -111,7 +122,7 @@ CREATE TABLE transaksi (
     metode_pembayaran   VARCHAR(20)    NOT NULL
                         CHECK (metode_pembayaran IN ('cash', 'transfer', 'qris', 'koin')),
     status_pembayaran   VARCHAR(20)    NOT NULL DEFAULT 'pending'
-                        CHECK (status_pembayaran IN ('lunas', 'pending', 'gagal')),
+                        CHECK (status_pembayaran IN ('lunas', 'belum dibayar', 'gagal')),
     tanggal_transaksi   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
 );
 
