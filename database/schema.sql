@@ -1,97 +1,139 @@
 -- ============================================================
--- Laundry System Hybrid - Database Schema
--- PostgreSQL 15+
+-- Laundry System Hybrid - Database Schema (Bab 5)
+-- PostgreSQL 16
 -- ============================================================
 
--- Enum types
-CREATE TYPE user_role AS ENUM ('customer', 'kasir', 'admin', 'owner');
-CREATE TYPE booking_status AS ENUM ('menunggu_konfirmasi', 'dikonfirmasi', 'diproses', 'selesai', 'dibatalkan');
-CREATE TYPE service_type AS ENUM ('kiloan', 'koin');
-CREATE TYPE machine_type AS ENUM ('washer', 'dryer');
-CREATE TYPE machine_status AS ENUM ('available', 'in_use', 'maintenance');
-CREATE TYPE payment_method AS ENUM ('cash', 'transfer', 'qris');
+-- Hapus tabel lama jika ada (urutan penting karena ada foreign key)
+DROP TABLE IF EXISTS audit_log CASCADE;
+DROP TABLE IF EXISTS transaksi CASCADE;
+DROP TABLE IF EXISTS pemesanan CASCADE;
+DROP TABLE IF EXISTS layanan CASCADE;
+DROP TABLE IF EXISTS mesin_cuci CASCADE;
+DROP TABLE IF EXISTS owner CASCADE;
+DROP TABLE IF EXISTS karyawan CASCADE;
+DROP TABLE IF EXISTS customer CASCADE;
 
--- Users
-CREATE TABLE users (
-    id          SERIAL PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    email       VARCHAR(100) UNIQUE NOT NULL,
-    phone       VARCHAR(20),
-    password    VARCHAR(255) NOT NULL,
-    role        user_role NOT NULL DEFAULT 'customer',
-    is_locked   BOOLEAN NOT NULL DEFAULT FALSE,
-    failed_attempts SMALLINT NOT NULL DEFAULT 0,
-    locked_until TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- ── CUSTOMER ────────────────────────────────────────────────
+CREATE TABLE customer (
+    id_customer     SERIAL PRIMARY KEY,
+    nama_lengkap    VARCHAR(100) NOT NULL,
+    username        VARCHAR(50)  UNIQUE NOT NULL,
+    no_hp           VARCHAR(20),
+    email           VARCHAR(150) UNIQUE NOT NULL,
+    password        VARCHAR(255) NOT NULL,
+    status_akun     VARCHAR(20)  NOT NULL DEFAULT 'aktif'
+                    CHECK (status_akun IN ('aktif', 'nonaktif')),
+    alamat          TEXT,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    tanggal_daftar  DATE         NOT NULL DEFAULT CURRENT_DATE
 );
 
--- Laundry services (kiloan / koin)
-CREATE TABLE services (
-    id          SERIAL PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    type        service_type NOT NULL,
-    price       NUMERIC(10,2) NOT NULL,
-    unit        VARCHAR(20) NOT NULL DEFAULT 'per kg',
-    is_active   BOOLEAN NOT NULL DEFAULT TRUE
+-- ── KARYAWAN ────────────────────────────────────────────────
+CREATE TABLE karyawan (
+    id_karyawan     SERIAL PRIMARY KEY,
+    nama_lengkap    VARCHAR(100) NOT NULL,
+    username        VARCHAR(50)  UNIQUE NOT NULL,
+    no_hp           VARCHAR(20),
+    email           VARCHAR(150) UNIQUE NOT NULL,
+    password        VARCHAR(255) NOT NULL,
+    role            VARCHAR(20)  NOT NULL
+                    CHECK (role IN ('admin', 'kasir')),
+    hak_akses       TEXT,
+    status_akun     VARCHAR(20)  NOT NULL DEFAULT 'aktif'
+                    CHECK (status_akun IN ('aktif', 'nonaktif')),
+    alamat          TEXT,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Machines
-CREATE TABLE machines (
-    id          SERIAL PRIMARY KEY,
-    name        VARCHAR(50) NOT NULL,
-    type        machine_type NOT NULL,
-    status      machine_status NOT NULL DEFAULT 'available',
-    capacity_kg SMALLINT
+-- ── OWNER ───────────────────────────────────────────────────
+CREATE TABLE owner (
+    id_owner        SERIAL PRIMARY KEY,
+    nama_lengkap    VARCHAR(100) NOT NULL,
+    username        VARCHAR(50)  UNIQUE NOT NULL,
+    no_hp           VARCHAR(20),
+    email           VARCHAR(150) UNIQUE NOT NULL,
+    password        VARCHAR(255) NOT NULL,
+    hak_akses       TEXT,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Shifts
-CREATE TABLE shifts (
-    id          SERIAL PRIMARY KEY,
-    kasir_id    INTEGER NOT NULL REFERENCES users(id),
-    date        DATE NOT NULL,
-    start_time  TIME NOT NULL,
-    end_time    TIME NOT NULL
+-- ── MESIN CUCI ──────────────────────────────────────────────
+CREATE TABLE mesin_cuci (
+    id_mesin                SERIAL PRIMARY KEY,
+    kode_mesin              VARCHAR(20)    UNIQUE NOT NULL,
+    tipe_mesin              VARCHAR(50)    NOT NULL
+                            CHECK (tipe_mesin IN ('washer', 'dryer')),
+    nama_mesin              VARCHAR(100)   NOT NULL,
+    status_mesin            VARCHAR(20)    NOT NULL DEFAULT 'tersedia'
+                            CHECK (status_mesin IN ('tersedia', 'dipakai', 'maintenance')),
+    konsumsi_kwh            NUMERIC(6,2),
+    kapasitas_kg            SMALLINT,
+    penggunaan_air_liter    NUMERIC(6,2)
 );
 
--- Bookings
-CREATE TABLE bookings (
-    id              SERIAL PRIMARY KEY,
-    customer_id     INTEGER NOT NULL REFERENCES users(id),
-    service_id      INTEGER NOT NULL REFERENCES services(id),
-    machine_id      INTEGER REFERENCES machines(id),
-    status          booking_status NOT NULL DEFAULT 'menunggu_konfirmasi',
-    estimated_weight NUMERIC(5,2),
-    scheduled_at    TIMESTAMPTZ NOT NULL,
-    confirmed_by    INTEGER REFERENCES users(id),
-    notes           TEXT,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- ── LAYANAN ─────────────────────────────────────────────────
+CREATE TABLE layanan (
+    id_layanan      SERIAL PRIMARY KEY,
+    nama_layanan    VARCHAR(100)   NOT NULL,
+    jenis_layanan   VARCHAR(20)    NOT NULL
+                    CHECK (jenis_layanan IN ('kiloan', 'koin')),
+    harga           NUMERIC(10,2)  NOT NULL,
+    estimasi_waktu  INTEGER        NOT NULL  -- dalam menit
 );
 
--- Transactions
-CREATE TABLE transactions (
-    id              SERIAL PRIMARY KEY,
-    booking_id      INTEGER NOT NULL REFERENCES bookings(id),
-    kasir_id        INTEGER NOT NULL REFERENCES users(id),
-    shift_id        INTEGER REFERENCES shifts(id),
-    amount          NUMERIC(10,2) NOT NULL,
-    payment_method  payment_method NOT NULL DEFAULT 'cash',
-    paid_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- ── PEMESANAN ───────────────────────────────────────────────
+CREATE TABLE pemesanan (
+    id_pemesanan        SERIAL PRIMARY KEY,
+    id_customer         INTEGER        NOT NULL REFERENCES customer(id_customer),
+    id_layanan          INTEGER        NOT NULL REFERENCES layanan(id_layanan),
+    id_mesin            INTEGER        REFERENCES mesin_cuci(id_mesin),
+    tanggal_pesanan     DATE           NOT NULL DEFAULT CURRENT_DATE,
+    shift               VARCHAR(20)    NOT NULL
+                        CHECK (shift IN ('pagi', 'siang', 'sore', 'malam')),
+    status_pesanan      VARCHAR(30)    NOT NULL DEFAULT 'pending'
+                        CHECK (status_pesanan IN ('pending', 'dikonfirmasi', 'ditolak', 'selesai')),
+    berat_kg            NUMERIC(5,2),
+    jenis_pencucian     VARCHAR(20)    NOT NULL
+                        CHECK (jenis_pencucian IN ('kiloan', 'koin')),
+    metode_pengambilan  VARCHAR(20)    NOT NULL
+                        CHECK (metode_pengambilan IN ('ambil_sendiri', 'delivery')),
+    catatan             TEXT
 );
 
--- Audit logs
-CREATE TABLE audit_logs (
-    id          BIGSERIAL PRIMARY KEY,
-    user_id     INTEGER REFERENCES users(id),
-    action      VARCHAR(100) NOT NULL,
-    entity      VARCHAR(50),
-    entity_id   INTEGER,
-    ip_address  VARCHAR(45),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- ── TRANSAKSI ───────────────────────────────────────────────
+CREATE TABLE transaksi (
+    id_transaksi        SERIAL PRIMARY KEY,
+    id_pemesanan        INTEGER        NOT NULL REFERENCES pemesanan(id_pemesanan),
+    id_customer         INTEGER        NOT NULL REFERENCES customer(id_customer),
+    id_karyawan         INTEGER        NOT NULL REFERENCES karyawan(id_karyawan),
+    nomor_struk         VARCHAR(50)    UNIQUE NOT NULL,
+    total               NUMERIC(10,2)  NOT NULL,
+    metode_pembayaran   VARCHAR(20)    NOT NULL
+                        CHECK (metode_pembayaran IN ('cash', 'transfer', 'qris', 'koin')),
+    status_pembayaran   VARCHAR(20)    NOT NULL DEFAULT 'pending'
+                        CHECK (status_pembayaran IN ('lunas', 'pending', 'gagal')),
+    tanggal_transaksi   TIMESTAMPTZ    NOT NULL DEFAULT NOW()
 );
 
--- Indexes
-CREATE INDEX idx_bookings_customer ON bookings(customer_id);
-CREATE INDEX idx_bookings_status   ON bookings(status);
-CREATE INDEX idx_transactions_kasir ON transactions(kasir_id);
-CREATE INDEX idx_audit_logs_user   ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_created ON audit_logs(created_at);
+-- ── AUDIT LOG ───────────────────────────────────────────────
+CREATE TABLE audit_log (
+    id_log          BIGSERIAL PRIMARY KEY,
+    id_customer     INTEGER      REFERENCES customer(id_customer),
+    id_karyawan     INTEGER      REFERENCES karyawan(id_karyawan),
+    tipe_log        VARCHAR(50)  NOT NULL,
+    isi_pesan       TEXT,
+    aktivitas       VARCHAR(100) NOT NULL,
+    timestamp       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    status          VARCHAR(20)  NOT NULL
+                    CHECK (status IN ('berhasil', 'gagal')),
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ── INDEXES ─────────────────────────────────────────────────
+CREATE INDEX idx_pemesanan_customer   ON pemesanan(id_customer);
+CREATE INDEX idx_pemesanan_status     ON pemesanan(status_pesanan);
+CREATE INDEX idx_transaksi_karyawan   ON transaksi(id_karyawan);
+CREATE INDEX idx_transaksi_customer   ON transaksi(id_customer);
+CREATE INDEX idx_audit_log_customer   ON audit_log(id_customer);
+CREATE INDEX idx_audit_log_karyawan   ON audit_log(id_karyawan);
+CREATE INDEX idx_audit_log_timestamp  ON audit_log(timestamp);
