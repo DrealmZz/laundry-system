@@ -1,158 +1,166 @@
 const jwt = require('jsonwebtoken');
 const { hashPassword, comparePassword } = require('../../../shared/utils');
-const userRepository = require('../repositories/user.repository');
+const { ROLES, USER_TABLES } = require('../../../shared/constants');
+const customerRepository = require('../repositories/customer.repository');
+const karyawanRepository = require('../repositories/karyawan.repository');
+const ownerRepository = require('../repositories/owner.repository');
 const auditLogRepository = require('../repositories/audit-log.repository');
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCK_DURATION_MINUTES = 30;
 
 class AuthService {
-  async login({ email, password, role }, ipAddress) {
-    const user = await userRepository.findByEmail(email);
+  async login({ identifier, password }) {
+    let user = null;
+    let table = null;
+    let userIdField = null;
+    let role = null;
+
+    const customer = await customerRepository.findByLogin(identifier);
+    if (customer) {
+      user = customer;
+      table = USER_TABLES.CUSTOMER;
+      userIdField = 'id_customer';
+      role = ROLES.CUSTOMER;
+    }
 
     if (!user) {
-      throw Object.assign(new Error('Email atau password salah.'), { statusCode: 401 });
-    }
-
-    if (user.role !== role) {
-      throw Object.assign(new Error(`Akun ini bukan role ${role}.`), { statusCode: 403 });
-    }
-
-    if (user.is_locked) {
-      const now = new Date();
-      const lockedUntil = new Date(user.locked_until);
-
-      if (now < lockedUntil) {
-        const remainingMs = lockedUntil - now;
-        const remainingMin = Math.ceil(remainingMs / 60000);
-        throw Object.assign(
-          new Error(`Akun terkunci. Coba lagi dalam ${remainingMin} menit.`),
-          { statusCode: 423 }
-        );
+      const karyawan = await karyawanRepository.findByLogin(identifier);
+      if (karyawan) {
+        user = karyawan;
+        table = USER_TABLES.KARYAWAN;
+        userIdField = 'id_karyawan';
+        role = karyawan.role;
       }
+    }
 
-      await userRepository.unlockAccount(user.id);
+    if (!user) {
+      const ownerUser = await ownerRepository.findByLogin(identifier);
+      if (ownerUser) {
+        user = ownerUser;
+        table = USER_TABLES.OWNER;
+        userIdField = 'id_owner';
+        role = ROLES.OWNER;
+      }
+    }
+
+    if (!user) {
+      throw Object.assign(new Error('Username/email/no_hp atau password salah.'), { statusCode: 401 });
+    }
+
+    if (user.status_akun && user.status_akun !== 'aktif') {
+      throw Object.assign(new Error('Akun Anda telah dinonaktifkan. Silakan hubungi admin.'), { statusCode: 403 });
     }
 
     const isMatch = await comparePassword(password, user.password);
 
     if (!isMatch) {
-      const updated = await userRepository.incrementFailedAttempts(user.id);
-
       await auditLogRepository.create({
-        userId: user.id,
+        userId: user[userIdField],
+        userTable: table,
         action: 'LOGIN_FAILED',
-        entity: 'users',
-        entityId: user.id,
-        ipAddress,
       });
 
-      if (updated.failed_attempts >= MAX_FAILED_ATTEMPTS) {
-        await userRepository.lockAccount(user.id, LOCK_DURATION_MINUTES);
-
-        throw Object.assign(
-          new Error(`Akun terkunci karena ${MAX_FAILED_ATTEMPTS}x gagal login. Coba lagi dalam ${LOCK_DURATION_MINUTES} menit.`),
-          { statusCode: 423 }
-        );
-      }
-
-      const remaining = MAX_FAILED_ATTEMPTS - updated.failed_attempts;
-      throw Object.assign(
-        new Error(`Email atau password salah. Sisa percobaan: ${remaining}.`),
-        { statusCode: 401 }
-      );
+      throw Object.assign(new Error('Username/email/no_hp atau password salah.'), { statusCode: 401 });
     }
 
-    await userRepository.resetFailedAttempts(user.id);
-
     await auditLogRepository.create({
-      userId: user.id,
+      userId: user[userIdField],
+      userTable: table,
       action: 'LOGIN_SUCCESS',
-      entity: 'users',
-      entityId: user.id,
-      ipAddress,
     });
 
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user[userIdField], role, table },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
     );
 
+    const { password: _, ...userData } = user;
+
     return {
       token,
       user: {
-        id: user.id,
-        name: user.name,
+        id: user[userIdField],
+        nama_lengkap: user.nama_lengkap,
         email: user.email,
-        role: user.role,
+        role,
+        table,
       },
     };
   }
 
-  async register({ name, email, phone, password, role }) {
-    const exists = await userRepository.emailExists(email);
-    if (exists) {
+  async register({ nama_lengkap, username, no_hp, email, password, alamat }) {
+    if (await customerRepository.usernameExists(username)) {
+      throw Object.assign(new Error('Username sudah digunakan.'), { statusCode: 409 });
+    }
+
+    if (await customerRepository.emailExists(email)) {
       throw Object.assign(new Error('Email sudah terdaftar.'), { statusCode: 409 });
     }
 
     const hashed = await hashPassword(password);
 
-    const user = await userRepository.create({
-      name,
+    const user = await customerRepository.create({
+      nama_lengkap,
+      username,
+      no_hp,
       email,
-      phone,
       password: hashed,
-      role,
+      alamat,
     });
 
     return {
-      id: user.id,
-      name: user.name,
+      id: user.id_customer,
+      nama_lengkap: user.nama_lengkap,
+      username: user.username,
       email: user.email,
-      phone: user.phone,
-      role: user.role,
+      status_akun: user.status_akun,
       createdAt: user.created_at,
     };
   }
 
-  async changePassword(userId, oldPassword, newPassword) {
-    const user = await userRepository.findByEmail(
-      (await userRepository.findById(userId)).email
-    );
+  async changePassword(userId, userTable, oldPassword, newPassword) {
+    let user;
 
-    const isMatch = await comparePassword(oldPassword, user.password);
-    if (!isMatch) {
-      throw Object.assign(new Error('Password lama salah.'), { statusCode: 401 });
+    if (userTable === USER_TABLES.CUSTOMER) {
+      user = await customerRepository.findByLogin(
+        (await customerRepository.findById(userId)).username
+      );
+      if (!user) throw Object.assign(new Error('User tidak ditemukan.'), { statusCode: 404 });
+
+      const isMatch = await comparePassword(oldPassword, user.password);
+      if (!isMatch) throw Object.assign(new Error('Password lama salah.'), { statusCode: 401 });
+
+      const hashed = await hashPassword(newPassword);
+      await customerRepository.updatePassword(userId, hashed);
+    } else if (userTable === USER_TABLES.KARYAWAN) {
+      user = await karyawanRepository.findByLogin(
+        (await karyawanRepository.findById(userId)).username
+      );
+      if (!user) throw Object.assign(new Error('User tidak ditemukan.'), { statusCode: 404 });
+
+      const isMatch = await comparePassword(oldPassword, user.password);
+      if (!isMatch) throw Object.assign(new Error('Password lama salah.'), { statusCode: 401 });
+
+      const hashed = await hashPassword(newPassword);
+      await karyawanRepository.updatePassword(userId, hashed);
+    } else if (userTable === USER_TABLES.OWNER) {
+      user = await ownerRepository.findByLogin(
+        (await ownerRepository.findById(userId)).username
+      );
+      if (!user) throw Object.assign(new Error('User tidak ditemukan.'), { statusCode: 404 });
+
+      const isMatch = await comparePassword(oldPassword, user.password);
+      if (!isMatch) throw Object.assign(new Error('Password lama salah.'), { statusCode: 401 });
+
+      const hashed = await hashPassword(newPassword);
+      await ownerRepository.updatePassword(userId, hashed);
     }
-
-    const hashed = await hashPassword(newPassword);
-    await userRepository.updatePassword(userId, hashed);
 
     await auditLogRepository.create({
       userId,
+      userTable,
       action: 'PASSWORD_CHANGED',
-      entity: 'users',
-      entityId: userId,
-      ipAddress: null,
-    });
-  }
-
-  async resetPassword(email, newPassword) {
-    const user = await userRepository.findByEmail(email);
-    if (!user) {
-      throw Object.assign(new Error('Email tidak ditemukan.'), { statusCode: 404 });
-    }
-
-    const hashed = await hashPassword(newPassword);
-    await userRepository.updatePassword(user.id, hashed);
-
-    await auditLogRepository.create({
-      userId: user.id,
-      action: 'PASSWORD_RESET',
-      entity: 'users',
-      entityId: user.id,
-      ipAddress: null,
     });
   }
 }
