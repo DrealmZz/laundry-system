@@ -26,4 +26,4 @@ INSERT INTO layanan (nama_layanan, jenis_layanan, harga, estimasi_waktu) VALUES
 INSERT INTO mesin_cuci (kode_mesin, tipe_mesin, nama_mesin, status_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter) VALUES
   ('WM-001', 'pencucian', 'Mesin Cuci A', 'tersedia', 7, 1.5, 50),
   ('WM-002', 'pencucian', 'Mesin Cuci B', 'tersedia', 10, 2.0, 65),
-  ('DR-001', 'pengering', 'Mesin Pengering A', 'tersedia', 7, 3.0, 0);
+  ('DR-001', 'pengeringan', 'Mesin Pengering A', 'tersedia', 7, 3.0, 0);
