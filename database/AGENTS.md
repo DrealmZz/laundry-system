@@ -16,7 +16,7 @@ Contoh: `002_add_notifications_table.sql`
 
 Jalankan secara berurutan:
 ```bash
-psql -U postgres -d laundry_db -f migrations/002_add_notifications_table.sql
+psql -U postgres -d laundry_system -f migrations/002_add_notifications_table.sql
 ```
 
 ## Struktur
@@ -33,9 +33,9 @@ database/
 ## Setup Awal
 
 ```bash
-createdb laundry_db
-psql -U postgres -d laundry_db -f schema.sql
-psql -U postgres -d laundry_db -f seeds/001_dev_seed.sql
+createdb laundry_system
+psql -U postgres -d laundry_system -f schema.sql
+psql -U postgres -d laundry_system -f seeds/001_dev_seed.sql
 ```
 
 ## Tabel Utama
