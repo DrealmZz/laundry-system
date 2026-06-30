@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const userRepository = require('../../modules/auth/repositories/user.repository');
+const db = require('../database/db');
+const { USER_TABLES } = require('../constants');
 
 const protect = async (req, res, next) => {
   try {
@@ -17,8 +18,33 @@ const protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let user;
 
-    const user = await userRepository.findById(decoded.id);
+    if (decoded.table === USER_TABLES.CUSTOMER) {
+      const { rows } = await db.query(
+        'SELECT id_customer AS id, nama_lengkap, email, username, status_akun FROM customer WHERE id_customer = $1',
+        [decoded.id]
+      );
+      if (rows.length > 0) {
+        user = { ...rows[0], role: 'customer', table: 'customer' };
+      }
+    } else if (decoded.table === USER_TABLES.KARYAWAN) {
+      const { rows } = await db.query(
+        'SELECT id_karyawan AS id, nama_lengkap, email, username, role, status_akun FROM karyawan WHERE id_karyawan = $1',
+        [decoded.id]
+      );
+      if (rows.length > 0) {
+        user = { ...rows[0], table: 'karyawan' };
+      }
+    } else if (decoded.table === USER_TABLES.OWNER) {
+      const { rows } = await db.query(
+        'SELECT id_owner AS id, nama_lengkap, email, username FROM owner WHERE id_owner = $1',
+        [decoded.id]
+      );
+      if (rows.length > 0) {
+        user = { ...rows[0], role: 'owner', table: 'owner' };
+      }
+    }
 
     if (!user) {
       return res.status(401).json({
@@ -27,14 +53,14 @@ const protect = async (req, res, next) => {
       });
     }
 
-    if (user.is_locked) {
+    if (user.status_akun && user.status_akun !== 'aktif') {
       return res.status(403).json({
         status: 'error',
-        message: 'Akun Anda telah dikunci. Silakan hubungi admin.',
+        message: 'Akun Anda telah dinonaktifkan. Silakan hubungi admin.',
       });
     }
 
-    req.user = { id: user.id, name: user.name, email: user.email, role: user.role };
+    req.user = user;
     next();
   } catch (err) {
     if (err.name === 'JsonWebTokenError') {

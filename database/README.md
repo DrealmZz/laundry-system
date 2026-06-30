@@ -6,13 +6,13 @@ PostgreSQL 15+. Semua file SQL ada di sini.
 
 ```bash
 # 1. Buat database
-createdb laundry_db
+createdb laundry_system
 
 # 2. Jalankan schema
-psql -U postgres -d laundry_db -f schema.sql
+psql -U postgres -d laundry_system -f schema.sql
 
 # 3. (Opsional) Isi data awal untuk development
-psql -U postgres -d laundry_db -f seeds/001_dev_seed.sql
+psql -U postgres -d laundry_system -f seeds/001_dev_seed.sql
 ```
 
 ## Struktur

@@ -1,37 +1,21 @@
 const authService = require('../services/auth.service');
 
-const ALLOWED_ROLES = ['customer', 'kasir', 'admin', 'owner'];
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^[0-9+\-\s]{8,20}$/;
 
 exports.login = async (req, res, next) => {
   try {
-    const email = (req.body.email || '').trim();
+    const identifier = (req.body.identifier || '').trim();
     const password = req.body.password || '';
-    const role = (req.body.role || '').trim();
-    const ipAddress = req.ip || req.connection.remoteAddress;
 
-    if (!email || !password || !role) {
+    if (!identifier || !password) {
       return res.status(400).json({
         status: 'error',
-        message: 'Email, password, dan role wajib diisi.',
+        message: 'Identifier (username/email/no_hp) dan password wajib diisi.',
       });
     }
 
-    if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Format email tidak valid.',
-      });
-    }
-
-    if (!ALLOWED_ROLES.includes(role)) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Role tidak valid. Pilih: ${ALLOWED_ROLES.join(', ')}.`,
-      });
-    }
-
-    const result = await authService.login({ email, password, role }, ipAddress);
+    const result = await authService.login({ identifier, password });
 
     res.status(200).json({
       status: 'success',
@@ -45,16 +29,17 @@ exports.login = async (req, res, next) => {
 
 exports.register = async (req, res, next) => {
   try {
-    const name = (req.body.name || '').trim();
+    const nama_lengkap = (req.body.nama_lengkap || '').trim();
+    const username = (req.body.username || '').trim();
+    const no_hp = (req.body.no_hp || '').trim();
     const email = (req.body.email || '').trim();
-    const phone = (req.body.phone || '').trim();
     const password = req.body.password || '';
-    const role = (req.body.role || 'customer').trim();
+    const alamat = (req.body.alamat || '').trim();
 
-    if (!name || !email || !password) {
+    if (!nama_lengkap || !username || !email || !password) {
       return res.status(400).json({
         status: 'error',
-        message: 'Name, email, dan password wajib diisi.',
+        message: 'nama_lengkap, username, email, dan password wajib diisi.',
       });
     }
 
@@ -72,14 +57,7 @@ exports.register = async (req, res, next) => {
       });
     }
 
-    if (!ALLOWED_ROLES.includes(role)) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Role tidak valid. Pilih: ${ALLOWED_ROLES.join(', ')}.`,
-      });
-    }
-
-    const result = await authService.register({ name, email, phone, password, role });
+    const result = await authService.register({ nama_lengkap, username, no_hp, email, password, alamat });
 
     res.status(201).json({
       status: 'success',
@@ -132,48 +110,11 @@ exports.changePassword = async (req, res, next) => {
       });
     }
 
-    await authService.changePassword(req.user.id, oldPassword, newPassword);
+    await authService.changePassword(req.user.id, req.user.table, oldPassword, newPassword);
 
     res.status(200).json({
       status: 'success',
       message: 'Password berhasil diubah.',
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-exports.resetPassword = async (req, res, next) => {
-  try {
-    const email = (req.body.email || '').trim();
-    const newPassword = req.body.newPassword || '';
-
-    if (!email || !newPassword) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Email dan password baru wajib diisi.',
-      });
-    }
-
-    if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Format email tidak valid.',
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Password baru minimal 6 karakter.',
-      });
-    }
-
-    await authService.resetPassword(email, newPassword);
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Password berhasil direset.',
     });
   } catch (err) {
     next(err);

@@ -1,4 +1,4 @@
-# Sistem Manajemen Laundry Hybrid
+ # Sistem Manajemen Laundry Hybrid
 
 Aplikasi manajemen laundry hibrid (Kiloan & Koin) berbasis mobile app dan web.  
 **Kelompok 5 — RPL 2026**
@@ -22,8 +22,8 @@ laundry-system/
 
 ```bash
 createdb laundry_db
-psql -U postgres -d laundry_db -f database/schema.sql
-psql -U postgres -d laundry_db -f database/seeds/001_dev_seed.sql
+psql -U postgres -d laundry_system -f database/schema.sql
+psql -U postgres -d laundry_system -f database/seeds/001_dev_seed.sql
 ```
 
 ### 2. Backend

@@ -9,8 +9,8 @@ const errorMiddleware = require('./shared/middlewares/error.middleware');
 const authRoutes = require('./modules/auth/routes/auth.routes');
 const userRoutes = require('./modules/user-management/routes/user.routes');
 const serviceRoutes = require('./modules/laundry-service/routes/service.routes');
-const bookingRoutes = require('./modules/booking/routes/booking.routes');
-const transactionRoutes = require('./modules/transaction/routes/transaction.routes');
+const pemesananRoutes = require('./modules/booking/routes/pemesanan.routes');
+const transaksiRoutes = require('./modules/transaction/routes/transaksi.routes');
 const reportRoutes = require('./modules/report/routes/report.routes');
 
 const app = express();
@@ -35,8 +35,8 @@ app.use('/api/', rateLimit({
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/services', serviceRoutes);
-app.use('/api/v1/bookings', bookingRoutes);
-app.use('/api/v1/transactions', transactionRoutes);
+app.use('/api/v1/pemesanan', pemesananRoutes);
+app.use('/api/v1/transaksi', transaksiRoutes);
 app.use('/api/v1/reports', reportRoutes);
 
 // Health check

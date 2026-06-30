@@ -90,7 +90,7 @@ CREATE TABLE pemesanan (
     tanggal_pesanan     DATE           NOT NULL DEFAULT CURRENT_DATE,
     shift               VARCHAR(20)    NOT NULL
                         CHECK (shift IN ('pagi', 'siang', 'sore', 'malam')),
-    status_pesanan      VARCHAR(30)    NOT NULL DEFAULT 'menunggu_konfirmasi'
+    status_pesanan      VARCHAR(30)    NOT NULL DEFAULT 'menunggu konfirmasi'
                         CHECK (status_pesanan IN (
                             'menunggu konfirmasi',
                             'pesanan ditolak',
