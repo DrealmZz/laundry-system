@@ -14,9 +14,12 @@ import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 
 const MACHINES = [
-  { id: 'A', label: 'Mesin A', kapasitas: '7 kg', status: 'Tersedia' as const },
-  { id: 'B', label: 'Mesin B', kapasitas: '10 kg', status: 'Digunakan' as const },
-  { id: 'C', label: 'Mesin C', kapasitas: '7 kg', status: 'Maintenance' as const },
+  { id: '1', label: 'Mesin Cuci 1', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
+  { id: '2', label: 'Mesin Cuci 2', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
+  { id: '3', label: 'Mesin Cuci 3', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
+  { id: '4', label: 'Mesin Cuci 4', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
+  { id: '5', label: 'Mesin Cuci 5', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
+  { id: '6', label: 'Mesin Cuci 6', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
 ];
 
 const KILO_LAYANAN = [

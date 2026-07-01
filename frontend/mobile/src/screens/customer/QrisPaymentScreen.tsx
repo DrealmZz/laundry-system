@@ -70,19 +70,11 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
       const result: any = await api.checkPaymentStatus(token!, bookingId);
       if (result.paid) {
         setPaid(true);
-        Alert.alert('Pembayaran Berhasil', 'Terima kasih! Pesanan Anda akan segera diproses.', [
-          { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Status' }) },
-        ]);
       } else {
         Alert.alert('Menunggu Pembayaran', 'Silakan scan QRIS untuk menyelesaikan pembayaran.');
       }
     } catch {
-      setTimeout(() => {
-        setPaid(true);
-        Alert.alert('Pembayaran Berhasil', 'Terima kasih! Pesanan Anda akan segera diproses.', [
-          { text: 'OK', onPress: () => navigation.navigate('Main', { screen: 'Status' }) },
-        ]);
-      }, 1500);
+      setTimeout(() => setPaid(true), 1500);
     } finally {
       setChecking(false);
     }
@@ -101,25 +93,6 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>Menyiapkan pembayaran...</Text>
-      </View>
-    );
-  }
-
-  if (paid) {
-    return (
-      <View style={styles.successContainer}>
-        <View style={styles.successIconBox}>
-          <Text style={styles.successIcon}>✅</Text>
-        </View>
-        <Text style={styles.successTitle}>Pembayaran Berhasil!</Text>
-        <Text style={styles.successDesc}>Pesanan Anda akan segera diproses oleh tim kami.</Text>
-        <TouchableOpacity
-          style={styles.successBtn}
-          onPress={() => navigation.navigate('Main', { screen: 'Status' })}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.successBtnText}>Lihat Status Pesanan</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -205,6 +178,27 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
           <Text style={styles.cancelBtnText}>Batalkan Pembayaran</Text>
         </TouchableOpacity>
       </View>
+
+      {paid && (
+        <Animated.View style={styles.successOverlay}>
+          <Animated.View style={styles.successCard}>
+            <View style={styles.successIconBox}>
+              <Text style={styles.successIcon}>{'\u2713'}</Text>
+            </View>
+            <Text style={styles.successTitle}>Pembayaran Berhasil</Text>
+            <Text style={styles.successDesc}>
+              Terima kasih! Pesanan kamu sudah masuk antrian dan akan segera dikerjakan.
+            </Text>
+            <TouchableOpacity
+              style={styles.successBtn}
+              onPress={() => navigation.navigate('Main', { screen: 'Status' })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.successBtnText}>Lihat Status Pesanan</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -340,34 +334,49 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   cancelBtnText: { ...Typography.body, color: Colors.textMuted, fontWeight: '600' },
-  successContainer: {
-    flex: 1,
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xxl,
+    zIndex: 999,
+  },
+  successCard: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xxl,
+    paddingHorizontal: Spacing.xxxl,
+    paddingVertical: Spacing.xxl + Spacing.lg,
+    alignItems: 'center',
+    ...Shadows.lg,
+  },
+  successIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.success + '18',
+    borderWidth: 2,
+    borderColor: Colors.success + '40',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  successIcon: { fontSize: 24, fontWeight: '800', color: Colors.success },
+  successTitle: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  successDesc: { ...Typography.caption, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, marginTop: Spacing.sm },
+  successBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: BorderRadius.lg,
     backgroundColor: Colors.success,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: Spacing.xxxl,
-    gap: Spacing.lg,
+    marginTop: Spacing.xl,
   },
-  successIconBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.50)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successIcon: { fontSize: 40 },
-  successTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  successDesc: { ...Typography.body, color: 'rgba(255,255,255,0.65)', textAlign: 'center', lineHeight: 22 },
-  successBtn: {
-    width: '100%',
-    height: 52,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  successBtnText: { fontSize: 14, fontWeight: '700', color: Colors.secondary },
+  successBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

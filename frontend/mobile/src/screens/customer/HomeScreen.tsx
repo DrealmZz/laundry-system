@@ -41,12 +41,6 @@ const SERVICES = [
   },
 ];
 
-const SCHEDULES = [
-  { type: 'Penjemputan', detail: 'Jl. Merdeka No. 12', time: 'Hari ini, 14.00', color: '#D97B4A' },
-  { type: 'Pengiriman', detail: 'Jl. Merdeka No. 12', time: 'Besok, 10.00', color: Colors.secondary },
-  { type: 'Booking Mesin', detail: 'Mesin #3 – Sudirman', time: 'Rab, 29 Jun', color: Colors.primary },
-];
-
 export default function HomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,23 +154,6 @@ export default function HomeScreen({ navigation }: any) {
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        {[
-          { label: 'Total Cuci', value: '24', unit: 'kali', icon: '🧺', bg: Colors.secondary },
-          { label: 'Poin Loyalty', value: '340', unit: 'poin', icon: '⭐', bg: Colors.primary },
-          { label: 'Hemat', value: 'Rp 48k', unit: 'bln ini', icon: '💨', bg: '#3B7A57' },
-        ].map((stat, i) => (
-          <View key={i} style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: stat.bg + '18' }]}>
-              <Text style={styles.statIcon}>{stat.icon}</Text>
-            </View>
-            <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statUnit}>{stat.unit}</Text>
-            <Text style={styles.statLabel}>{stat.label}</Text>
-          </View>
-        ))}
-      </View>
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Layanan Kami</Text>
         {filteredServices.length === 0 ? (
@@ -260,33 +237,6 @@ export default function HomeScreen({ navigation }: any) {
           </View>
         </View>
       )}
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Jadwal Mendatang</Text>
-          <TouchableOpacity>
-            <Text style={styles.sectionLink}>Kelola</Text>
-          </TouchableOpacity>
-        </View>
-        {SCHEDULES.map((s, i) => (
-          <View key={i} style={styles.scheduleCard}>
-            <View style={[styles.scheduleIconBox, { backgroundColor: s.color + '18' }]}>
-              <Text style={styles.scheduleIcon}>
-                {s.type === 'Penjemputan' ? '📍' : s.type === 'Pengiriman' ? '🚚' : '🪙'}
-              </Text>
-            </View>
-            <View style={styles.scheduleInfo}>
-              <Text style={styles.scheduleType}>{s.type}</Text>
-              <Text style={styles.scheduleDetail}>{s.detail}</Text>
-            </View>
-            <View style={[styles.scheduleTime, { backgroundColor: s.color + '15' }]}>
-              <Text style={[styles.scheduleTimeText, { color: s.color }]}>{s.time}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
-
-
 
       <View style={{ height: 32 }} />
     </ScrollView>
@@ -401,38 +351,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   searchIconText: { fontSize: 12 },
-  statsRow: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.xl,
-    gap: Spacing.md,
-    marginBottom: Spacing.xxl,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    ...Shadows.sm,
-  },
-  statIconBox: {
-    width: 28,
-    height: 28,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sm,
-  },
-  statIcon: { fontSize: 14 },
-  statValue: { fontSize: 18, fontWeight: '800', color: Colors.text, lineHeight: 22 },
-  statUnit: { fontSize: 9, color: Colors.textMuted, marginTop: 1 },
-  statLabel: { fontSize: 9, fontWeight: '500', color: '#B0A68A', marginTop: 2 },
   section: { paddingHorizontal: Spacing.xl, marginBottom: Spacing.xxl },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: Spacing.md },
   emptySearch: {
     alignItems: 'center',
     paddingVertical: Spacing.xxl,
@@ -442,8 +362,6 @@ const styles = StyleSheet.create({
   },
   emptySearchIcon: { fontSize: 28, marginBottom: Spacing.sm },
   emptySearchText: { fontSize: 12, color: Colors.textMuted },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: Spacing.md },
-  sectionLink: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   serviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -538,33 +456,6 @@ const styles = StyleSheet.create({
   stepItem: { alignItems: 'center', gap: 4 },
   stepDot: { fontSize: 14 },
   stepLabelText: { fontSize: 8, fontWeight: '600', textAlign: 'center' },
-  scheduleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Shadows.sm,
-  },
-  scheduleIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: Spacing.md,
-  },
-  scheduleIcon: { fontSize: 16 },
-  scheduleInfo: { flex: 1, marginRight: Spacing.sm },
-  scheduleType: { fontSize: 12, fontWeight: '600', color: Colors.text },
-  scheduleDetail: { fontSize: 10, color: Colors.textMuted, marginTop: 1 },
-  scheduleTime: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
-  },
-  scheduleTimeText: { fontSize: 9, fontWeight: '700' },
   promoCard: {
     flexDirection: 'row',
     alignItems: 'center',

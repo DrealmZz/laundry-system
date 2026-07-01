@@ -10,6 +10,7 @@ import LoadingScreen from '../components/LoadingScreen';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import HomeScreen from '../screens/customer/HomeScreen';
 import LayananScreen from '../screens/customer/LayananScreen';
 import BookingScreen from '../screens/customer/BookingScreen';
@@ -19,6 +20,7 @@ import StatusScreen from '../screens/customer/StatusScreen';
 import RiwayatScreen from '../screens/customer/RiwayatScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
 import QrisPaymentScreen from '../screens/customer/QrisPaymentScreen';
+import TrackingScreen from '../screens/customer/TrackingScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -74,9 +76,15 @@ function CustomerTabs() {
 export default function AppNavigator() {
   const { token, isLoading } = useAuth();
   const [forceReady, setForceReady] = useState(false);
+  const [showDemoLoading, setShowDemoLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setForceReady(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowDemoLoading(false), 4000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -85,8 +93,9 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <View style={{ flex: 1 }}>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
         {token ? (
           <>
             <Stack.Screen name="Main" component={CustomerTabs} />
@@ -120,15 +129,26 @@ export default function AppNavigator() {
               component={QrisPaymentScreen}
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="Tracking"
+              component={TrackingScreen}
+              options={{ headerShown: false }}
+            />
           </>
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+            />
           </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
+      <LoadingScreen visible={showDemoLoading} overlay message="Mencuci..." />
+    </View>
   );
 }
 

@@ -16,6 +16,7 @@ const MOCK: Record<string, unknown> = {
     user: { id: 1, name: 'Budi Santoso', email: 'budi@mail.com', role: 'customer', address: 'Jl. Merdeka No. 10, Jakarta' },
   },
   register: { message: 'Registrasi berhasil' },
+  forgotPassword: { message: 'Tautan reset password telah dikirim ke email' },
   services: [
     {
       id: 1,
@@ -55,7 +56,7 @@ const MOCK: Record<string, unknown> = {
     },
     {
       id: 5,
-      name: 'Selimut / Bed Cover',
+      name: 'selimut / Bed Cover',
       price: 25000,
       unit: 'pcs',
       desc: 'Cuci khusus selimut & bed cover besar',
@@ -64,45 +65,14 @@ const MOCK: Record<string, unknown> = {
     },
   ],
   machines: [
-    {
-      id_mesin: 1,
-      kode_mesin: 'WM-001',
-      nama_mesin: 'Mesin Cuci A',
-      tipe_mesin: 'pencucian',
-      status_mesin: 'tersedia',
-      kapasitas_kg: 7,
-      harga: 15000,
-    },
-    {
-      id_mesin: 2,
-      kode_mesin: 'WM-002',
-      nama_mesin: 'Mesin Cuci B',
-      tipe_mesin: 'pencucian',
-      status_mesin: 'tersedia',
-      kapasitas_kg: 10,
-      harga: 15000,
-    },
-    {
-      id_mesin: 3,
-      kode_mesin: 'DR-001',
-      nama_mesin: 'Mesin Pengering A',
-      tipe_mesin: 'pengeringan',
-      status_mesin: 'tersedia',
-      kapasitas_kg: 7,
-      harga: 10000,
-    },
+    { id_mesin: 1, kode_mesin: 'MC-01', nama_mesin: 'Mesin Cuci 1', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
+    { id_mesin: 2, kode_mesin: 'MC-02', nama_mesin: 'Mesin Cuci 2', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
+    { id_mesin: 3, kode_mesin: 'MC-03', nama_mesin: 'Mesin Cuci 3', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
+    { id_mesin: 4, kode_mesin: 'MC-04', nama_mesin: 'Mesin Cuci 4', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
+    { id_mesin: 5, kode_mesin: 'MC-05', nama_mesin: 'Mesin Cuci 5', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
+    { id_mesin: 6, kode_mesin: 'MC-06', nama_mesin: 'Mesin Cuci 6', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
   ],
   bookings: [
-    {
-      id: 1,
-      service: 'Kiloan Express',
-      status: 'diproses',
-      date: today,
-      total: 48000,
-      weight: 4,
-      shift: 'Pagi (07-11)',
-      address: 'Jl. Merdeka No. 10, Jakarta',
-    },
     {
       id: 2,
       service: 'Koin / Self-Service',
@@ -212,18 +182,23 @@ export const api = {
 
   createBooking: (token: string, data: object) =>
     USE_MOCK
-      ? new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                id: Math.floor(Math.random() * 1000),
-                status: 'menunggu_konfirmasi',
-                ...data,
-                date: (data as any).date || today,
-              }),
-            800,
-          ),
-        )
+      ? new Promise((resolve) => {
+          const d = data as Record<string, unknown>;
+          const bookings = MOCK.bookings as Array<Record<string, unknown>>;
+          const newBooking = {
+            id: Math.floor(Math.random() * 9000) + 100,
+            service: (d.service as string) || 'Laundry',
+            status: 'menunggu_konfirmasi',
+            metode_pembayaran: null,
+            date: (d.date as string) || (d.tanggal_pesanan as string) || today,
+            shift: (d.shift as string) || '',
+            total: (d.total as number) || 0,
+            weight: (d.weight as number) || null,
+            address: (d.address as string) || null,
+          };
+          bookings.unshift(newBooking);
+          setTimeout(() => resolve(newBooking), 800);
+        })
       : request('/bookings', {
           method: 'POST',
           headers: {
@@ -272,18 +247,28 @@ export const api = {
 
   checkPaymentStatus: (token: string, bookingId: number) =>
     USE_MOCK
-      ? new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                paid: true,
-                id: bookingId,
-                status: 'sudah_dibayar',
-              }),
-            1200,
-          ),
-        )
+      ? new Promise((resolve) => {
+          setTimeout(() => {
+            const bookings = MOCK.bookings as Array<Record<string, unknown>>;
+            const idx = bookings.findIndex((b) => b.id === bookingId);
+            if (idx !== -1) {
+              bookings[idx].status = 'diproses';
+            }
+            resolve({ paid: true, id: bookingId, status: 'diproses' });
+          }, 1200);
+        })
       : request(`/transaksi/${bookingId}/status`, {
           headers: { Authorization: `Bearer ${token}` },
+        } as RequestInit),
+
+  forgotPassword: (email: string) =>
+    USE_MOCK
+      ? new Promise((resolve) =>
+          setTimeout(() => resolve(MOCK.forgotPassword), 800),
+        )
+      : request('/auth/lupa-password', {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+          headers: { 'Content-Type': 'application/json' },
         } as RequestInit),
 };

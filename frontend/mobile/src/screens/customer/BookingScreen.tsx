@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
+  Animated,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -20,7 +21,9 @@ const SHIFTS = [
   { id: 'pagi', label: 'Pagi', time: '07.00 – 09.00' },
   { id: 'siang', label: 'Siang', time: '11.00 – 13.00' },
   { id: 'sore', label: 'Sore', time: '15.00 – 17.00' },
+  { id: 'malam', label: 'Malam', time: '18.00 – 20.00' },
 ] as const;
+
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
@@ -73,36 +76,6 @@ export default function BookingScreen({ route, navigation }: any) {
       setLoading(false);
     }
   }, [jenisLayanan, alamat, tanggal, jamShift, catatan, token]);
-
-  if (success) {
-    return (
-      <View style={styles.successContainer}>
-        <View style={styles.successIconBox}>
-          <Text style={styles.successIcon}>✅</Text>
-        </View>
-        <Text style={styles.successTitle}>Pesanan Diterima!</Text>
-        <Text style={styles.successDesc}>
-          Pesananmu sedang menunggu konfirmasi dari tim kami.
-        </Text>
-        <View style={styles.successBadge}>
-          <View style={styles.successDot} />
-          <View>
-            <Text style={styles.successBadgeTitle}>Menunggu Konfirmasi</Text>
-            <Text style={styles.successBadgeSub}>
-              Tim kami akan menghubungi Anda segera
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={styles.successBtn}
-          onPress={() => navigation.navigate('Status')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.successBtnText}>Lihat Status Pesanan</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   return (
     <KeyboardAvoidingView
@@ -323,6 +296,27 @@ export default function BookingScreen({ route, navigation }: any) {
           </Text>
         </View>
       </ScrollView>
+
+      {success && (
+        <Animated.View style={styles.successOverlay}>
+          <Animated.View style={styles.successCard}>
+            <View style={styles.successIconBox}>
+              <Text style={styles.successIcon}>{'\u2713'}</Text>
+            </View>
+            <Text style={styles.successTitle}>Pesanan Diterima</Text>
+            <Text style={styles.successDesc}>
+              Pesanan kamu sedang menunggu konfirmasi dari tim kami.
+            </Text>
+            <TouchableOpacity
+              style={styles.successBtn}
+              onPress={() => navigation.navigate('Status')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.successBtnText}>Lihat Status Pesanan</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -603,71 +597,49 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   termsBold: { fontWeight: '600', color: Colors.text },
-  successContainer: {
-    flex: 1,
-    backgroundColor: Colors.secondary,
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: Spacing.xxl,
+    zIndex: 999,
+  },
+  successCard: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xxl,
     paddingHorizontal: Spacing.xxxl,
-    gap: Spacing.xl,
+    paddingVertical: Spacing.xxl + Spacing.lg,
+    alignItems: 'center',
+    ...Shadows.lg,
   },
   successIconBox: {
-    width: 80,
-    height: 80,
+    width: 56,
+    height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.success + '18',
+    backgroundColor: Colors.primary + '20',
     borderWidth: 2,
-    borderColor: Colors.success + '50',
+    borderColor: Colors.primary + '45',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.lg,
   },
-  successIcon: { fontSize: 40 },
-  successTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#fff',
-    fontFamily: Platform.OS === 'ios' ? 'Plus Jakarta Sans' : undefined,
-  },
-  successDesc: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  successBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.14)',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    width: '100%',
-  },
-  successDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#F59E0B',
-  },
-  successBadgeTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#F59E0B',
-  },
-  successBadgeSub: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.35)',
-    marginTop: 2,
-  },
+  successIcon: { fontSize: 24, fontWeight: '800', color: Colors.primary },
+  successTitle: { fontSize: 20, fontWeight: '800', color: Colors.text, textAlign: 'center' },
+  successDesc: { ...Typography.caption, color: Colors.textMuted, textAlign: 'center', lineHeight: 20, marginTop: Spacing.sm },
   successBtn: {
     width: '100%',
-    height: 52,
-    borderRadius: 20,
+    height: 48,
+    borderRadius: BorderRadius.lg,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: Spacing.xl,
   },
   successBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

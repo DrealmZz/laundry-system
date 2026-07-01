@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   Platform,
   KeyboardAvoidingView,
@@ -14,17 +13,12 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
+import Toast from '../../components/Toast';
 import CalendarModal from '../../components/CalendarModal';
 
-const SHIFTS = [
-  { id: 'pagi', label: 'Pagi', time: '07.00 – 09.00' },
-  { id: 'siang', label: 'Siang', time: '11.00 – 13.00' },
-  { id: 'sore', label: 'Sore', time: '15.00 – 17.00' },
-] as const;
-
 const CUCI_TYPES = [
-  { id: 'cuci_saja', label: 'Cuci Saja', desc: 'Mesin cuci + deterjen gratis', icon: '🧺', price: 15000 },
-  { id: 'cuci_kering', label: 'Cuci + Kering', desc: 'Cuci + mesin pengering', icon: '🔄', price: 25000 },
+  { id: 'cuci_saja', label: 'Cuci Saja', desc: 'Mesin cuci + deterjen gratis', icon: '🧺', price: 20000 },
+  { id: 'cuci_kering', label: 'Cuci + Kering', desc: 'Cuci + mesin pengering', icon: '🔄', price: 20000 },
 ] as const;
 
 const TIPE_STATUS: Record<string, { label: string; color: string; bg: string }> = {
@@ -40,9 +34,11 @@ export default function BookingKoinScreen({ navigation }: any) {
   const [loadingMachines, setLoadingMachines] = useState(false);
   const [jadwalLoading, setJadwalLoading] = useState(false);
 
+  const [toast, setToast] = useState({ message: '', visible: false });
+
   const [selectedMachine, setSelectedMachine] = useState<number | null>(null);
   const [tanggal, setTanggal] = useState('');
-  const [jamShift, setJamShift] = useState<string | null>(null);
+  const [jamMulai, setJamMulai] = useState('');
   const [jenisCuci, setJenisCuci] = useState<string | null>(null);
   const [catatan, setCatatan] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -64,20 +60,19 @@ export default function BookingKoinScreen({ navigation }: any) {
   const fetchAvailableRef = useRef(false);
 
   useEffect(() => {
-    if (!tanggal || !jamShift) {
+    if (!tanggal || !jamMulai) {
       setMachines([]);
       setSelectedMachine(null);
       setLoadingMachines(false);
       return;
     }
 
-    const shiftLabel = SHIFTS.find((s) => s.id === jamShift)?.label || jamShift;
     setLoadingMachines(true);
     setSelectedMachine(null);
     fetchAvailableRef.current = true;
     const refId = fetchAvailableRef.current;
 
-    api.getAvailableMachines(token!, tanggal, shiftLabel).then((data: any) => {
+    api.getAvailableMachines(token!, tanggal, jamMulai).then((data: any) => {
       if (refId !== fetchAvailableRef.current) return;
       setMachines(data);
       setLoadingMachines(false);
@@ -86,7 +81,7 @@ export default function BookingKoinScreen({ navigation }: any) {
       setMachines([]);
       setLoadingMachines(false);
     });
-  }, [tanggal, jamShift, token]);
+  }, [tanggal, jamMulai, token]);
 
   const toISO = (d: Date) => d.toISOString().split('T')[0];
 
@@ -107,11 +102,31 @@ export default function BookingKoinScreen({ navigation }: any) {
 
   const totalHarga = selectedCuciData ? selectedCuciData.price : 0;
 
+  const validateJam = (time: string): boolean => {
+    const match = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return false;
+    const [_, h, m] = match;
+    return parseInt(h) >= 0 && parseInt(h) <= 23 && parseInt(m) >= 0 && parseInt(m) <= 59;
+  };
+
+  const isJamValid = (time: string): boolean => {
+    if (!validateJam(time)) return false;
+    const [h, m] = time.split(':').map(Number);
+    const now = new Date();
+    const selected = new Date(tanggal + 'T' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':00');
+    const diffMs = selected.getTime() - now.getTime();
+    return diffMs >= 3600000;
+  };
+
+  const showToast = (message: string) => setToast({ message, visible: true });
+
   const handleSubmit = useCallback(async () => {
-    if (!selectedMachine) return Alert.alert('Error', 'Pilih mesin terlebih dahulu.');
-    if (!tanggal) return Alert.alert('Error', 'Pilih tanggal pemakaian.');
-    if (!jamShift) return Alert.alert('Error', 'Pilih jam pemakaian.');
-    if (!jenisCuci) return Alert.alert('Error', 'Pilih jenis pencucian.');
+    if (!selectedMachine) return showToast('Pilih mesin terlebih dahulu');
+    if (!tanggal) return showToast('Pilih tanggal pemakaian');
+    if (!jamMulai) return showToast('Masukkan jam pemakaian');
+    if (!validateJam(jamMulai)) return showToast('Format jam HH:MM — contoh 14:30');
+    if (!isJamValid(jamMulai)) return showToast('Jam pemakaian minimal 1 jam dari sekarang');
+    if (!jenisCuci) return showToast('Pilih jenis pencucian');
 
     setSubmitting(true);
     try {
@@ -121,7 +136,7 @@ export default function BookingKoinScreen({ navigation }: any) {
         jenis_pencucian: 'koin',
         jenis_cuci: jenisCuci,
         tanggal_pesanan: tanggal,
-        shift: SHIFTS.find((s) => s.id === jamShift)?.label || jamShift,
+        shift: jamMulai,
         metode_pengambilan: 'ambil_sendiri',
         catatan: catatan,
         total: totalHarga,
@@ -129,11 +144,11 @@ export default function BookingKoinScreen({ navigation }: any) {
       });
       setSuccess(true);
     } catch (e: any) {
-      Alert.alert('Gagal', e.message);
+      showToast(e.message || 'Gagal memproses pesanan');
     } finally {
       setSubmitting(false);
     }
-  }, [selectedMachine, tanggal, jamShift, jenisCuci, catatan, token, totalHarga]);
+  }, [selectedMachine, tanggal, jamMulai, jenisCuci, catatan, token, totalHarga]);
 
   if (success) {
     return (
@@ -170,6 +185,11 @@ export default function BookingKoinScreen({ navigation }: any) {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        onHide={() => setToast({ message: '', visible: false })}
+      />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -271,36 +291,23 @@ export default function BookingKoinScreen({ navigation }: any) {
               </View>
               <Text style={styles.cardHeaderLabel}>Jam Pemakaian *</Text>
             </View>
-            <View style={styles.shiftList}>
-              {SHIFTS.map((shift) => {
-                const active = jamShift === shift.id;
-                return (
-                  <TouchableOpacity
-                    key={shift.id}
-                    style={[styles.shiftCard, active && styles.shiftCardActive]}
-                    onPress={() => setJamShift(shift.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.radioOuterSmall, active && styles.radioOuterSmallActive]}>
-                      {active && <View style={styles.radioInnerSmall} />}
-                    </View>
-                    <View style={styles.shiftInfo}>
-                      <Text style={[styles.shiftLabel, active && { color: '#fff' }]}>
-                        {shift.label}
-                      </Text>
-                      <Text style={[styles.shiftTime, active && { color: 'rgba(255,255,255,0.6)' }]}>
-                        {shift.time} WIB
-                      </Text>
-                    </View>
-                    {active && (
-                      <View style={styles.shiftBadge}>
-                        <Text style={styles.shiftBadgeText}>DIPILIH</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+            <View style={styles.inputBox}>
+              <TextInput
+                style={styles.input}
+                placeholder="cth: 14:30"
+                placeholderTextColor={Colors.textMuted}
+                value={jamMulai}
+                onChangeText={setJamMulai}
+                keyboardType="numbers-and-punctuation"
+                maxLength={5}
+              />
             </View>
+            {jamMulai !== '' && !validateJam(jamMulai) && (
+              <Text style={styles.errorText}>Format HH:MM (contoh: 14:30)</Text>
+            )}
+            {jamMulai !== '' && validateJam(jamMulai) && !isJamValid(jamMulai) && (
+              <Text style={styles.errorText}>Minimal 1 jam dari sekarang</Text>
+            )}
           </View>
 
           {/* Machine Selection — muncul setelah tanggal & shift dipilih */}
@@ -312,7 +319,7 @@ export default function BookingKoinScreen({ navigation }: any) {
               <Text style={styles.cardHeaderLabel}>Pilih Mesin *</Text>
             </View>
 
-            {!tanggal || !jamShift ? (
+            {!tanggal || !jamMulai ? (
               <View style={styles.machinePlaceholder}>
                 <Text style={styles.machinePlaceholderIcon}>📋</Text>
                 <Text style={styles.machinePlaceholderTitle}>Pilih jadwal terlebih dahulu</Text>
@@ -356,7 +363,7 @@ export default function BookingKoinScreen({ navigation }: any) {
                           {m.nama_mesin}
                         </Text>
                         <Text style={[styles.machineDetail, isSelected && { color: 'rgba(255,255,255,0.6)' }]}>
-                          {m.kode_mesin} · {m.kapasitas_kg} kg · {m.tipe_mesin}
+                          {m.kode_mesin} · Max {m.kapasitas_kg} kg
                         </Text>
                       </View>
                       <View style={[styles.machineStatusBadge, { backgroundColor: '#EDFAF4' }]}>
@@ -429,7 +436,7 @@ export default function BookingKoinScreen({ navigation }: any) {
           </View>
 
           {/* Summary */}
-          {selectedMachine && tanggal && jamShift && jenisCuci && (
+          {selectedMachine && tanggal && validateJam(jamMulai) && isJamValid(jamMulai) && jenisCuci && (
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>Ringkasan Booking</Text>
               <View style={styles.summaryRow}>
@@ -443,8 +450,8 @@ export default function BookingKoinScreen({ navigation }: any) {
               </View>
               <View style={styles.summaryDivider} />
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Shift</Text>
-                <Text style={styles.summaryValue}>{SHIFTS.find((s) => s.id === jamShift)?.label || '-'}</Text>
+                <Text style={styles.summaryLabel}>Jam</Text>
+                <Text style={styles.summaryValue}>{jamMulai || '-'}</Text>
               </View>
               <View style={styles.summaryDivider} />
               <View style={styles.summaryRow}>
@@ -606,22 +613,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#fff',
   },
-  radioOuterSmall: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioOuterSmallActive: { borderColor: '#fff' },
-  radioInnerSmall: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#fff',
-  },
   machineInfo: { flex: 1 },
   machineName: { fontSize: 13, fontWeight: '700', color: Colors.text },
   machineDetail: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
@@ -710,36 +701,6 @@ const styles = StyleSheet.create({
   datePickerLabelFilled: { color: Colors.text, fontWeight: '700' },
   datePickerHint: { fontSize: 10, color: Colors.textMuted, marginTop: 1 },
   datePickerArrow: { fontSize: 18, color: Colors.textMuted, fontWeight: '300' },
-  shiftList: { gap: Spacing.sm },
-  shiftCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: '#FAF7F2',
-    borderWidth: 1.5,
-    borderColor: Colors.border + '30',
-  },
-  shiftCardActive: {
-    backgroundColor: Colors.secondary,
-    borderColor: Colors.secondary,
-    shadowColor: Colors.secondary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  shiftInfo: { flex: 1 },
-  shiftLabel: { fontSize: 13, fontWeight: '700', color: Colors.text },
-  shiftTime: { fontSize: 11, color: Colors.textMuted },
-  shiftBadge: {
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 3,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  shiftBadgeText: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.80)' },
   cuciRow: { flexDirection: 'row', gap: Spacing.md },
   cuciCard: {
     flex: 1,
@@ -907,4 +868,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   successBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: 'rgba(35,57,91,0.10)',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+    fontFamily: Platform.OS === 'ios' ? 'Plus Jakarta Sans' : undefined,
+  },
+  errorText: {
+    fontSize: 10,
+    color: Colors.error,
+    marginTop: 4,
+    marginLeft: 2,
+  },
 });

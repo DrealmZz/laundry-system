@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -19,16 +20,16 @@ import EmptyState from '../../components/EmptyState';
 const STATUS_ORDER = [
   'menunggu_konfirmasi',
   'dikonfirmasi',
-  'diproses',
   'menunggu_pembayaran',
+  'diproses',
   'selesai',
 ];
 
 const STATUS_DOTS: Record<string, { label: string; color: string }> = {
   menunggu_konfirmasi: { label: 'Menunggu', color: '#D97706' },
   dikonfirmasi: { label: 'Dikonfirmasi', color: Colors.secondary },
-  diproses: { label: 'Diproses', color: '#7C3AED' },
   menunggu_pembayaran: { label: 'Bayar', color: Colors.error },
+  diproses: { label: 'Diproses', color: '#7C3AED' },
   selesai: { label: 'Selesai', color: '#059669' },
 };
 
@@ -142,6 +143,7 @@ export default function StatusScreen() {
           />
         }
         renderItem={({ item }) => (
+          <Pressable onPress={() => (navigation as any).navigate('Tracking', { item })}>
           <Card style={styles.orderCard}>
             <View style={styles.orderHeader}>
               <Text style={styles.orderService}>{item.service}</Text>
@@ -177,6 +179,7 @@ export default function StatusScreen() {
               </TouchableOpacity>
             )}
           </Card>
+          </Pressable>
         )}
         ListEmptyComponent={
           <EmptyState

@@ -83,12 +83,7 @@ export default function LoginScreen({ navigation }: any) {
           </View>
 
           <View style={styles.inputGroup}>
-            <View style={styles.inputLabelRow}>
-              <Text style={styles.inputLabel}>Password</Text>
-              <TouchableOpacity>
-                <Text style={styles.forgotLink}>Lupa password?</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.inputLabel}>Password</Text>
             <View style={styles.inputBox}>
               <TextInput
                 style={[styles.input, { flex: 1 }]}
@@ -102,6 +97,9 @@ export default function LoginScreen({ navigation }: any) {
                 <Text style={styles.eyeIcon}>{showPass ? '🙈' : '👁️'}</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.forgotLink}>Lupa password?</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
@@ -113,16 +111,6 @@ export default function LoginScreen({ navigation }: any) {
             <Text style={styles.loginBtnText}>
               {loading ? 'Memproses...' : 'Masuk'}
             </Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>atau masuk dengan</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity style={styles.googleBtn} activeOpacity={0.8}>
-            <Text style={styles.googleBtnText}>Lanjutkan dengan Google</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -205,16 +193,14 @@ const styles = StyleSheet.create({
   formTitle: { ...Typography.h2, marginBottom: Spacing.xs },
   formSubtitle: { ...Typography.body, marginBottom: Spacing.xxl },
   inputGroup: { marginBottom: Spacing.lg },
-  inputLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
   inputLabel: {
     ...Typography.captionBold,
     color: Colors.text,
     marginBottom: 6,
+  },
+  forgotWrap: {
+    alignSelf: 'flex-end',
+    marginTop: 6,
   },
   forgotLink: {
     fontSize: 12,
@@ -252,38 +238,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: Spacing.xl,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(35,57,91,0.10)',
-  },
-  dividerText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: Colors.textMuted,
-    marginHorizontal: Spacing.md,
-  },
-  googleBtn: {
-    backgroundColor: '#fff',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.12)',
-    marginBottom: Spacing.xl,
-    ...Shadows.sm,
-  },
-  googleBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3C4043',
   },
   registerLink: { alignItems: 'center', paddingVertical: Spacing.sm },
   registerText: { ...Typography.body, color: Colors.textMuted },
