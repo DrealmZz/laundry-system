@@ -12,6 +12,7 @@ const serviceRoutes = require('./modules/laundry-service/routes/service.routes')
 const pemesananRoutes = require('./modules/booking/routes/pemesanan.routes');
 const transaksiRoutes = require('./modules/transaction/routes/transaksi.routes');
 const reportRoutes = require('./modules/report/routes/report.routes');
+const machineRoutes = require('./modules/machine/routes/machine.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,6 +39,7 @@ app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/pemesanan', pemesananRoutes);
 app.use('/api/v1/transaksi', transaksiRoutes);
 app.use('/api/v1/reports', reportRoutes);
+app.use('/api/v1/mesin', machineRoutes);
 
 // Health check
 app.get('/api/v1', (req, res) => {

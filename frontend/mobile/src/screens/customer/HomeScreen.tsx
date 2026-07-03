@@ -18,21 +18,13 @@ const SERVICES = [
   {
     id: 1,
     icon: '👕',
-    title: 'Laundry Kiloan Reguler',
-    desc: 'Bersih & wangi dalam 2–3 hari',
+    title: 'Laundry Kiloan',
+    desc: 'Reguler 2-3 hari / Express 6 jam',
     badge: 'Populer',
     color: Colors.secondary,
   },
   {
     id: 2,
-    icon: '⚡',
-    title: 'Laundry Kiloan Express',
-    desc: 'Selesai dalam 6 jam',
-    badge: 'Cepat',
-    color: '#B5763A',
-  },
-  {
-    id: 3,
     icon: '🪙',
     title: 'Laundry Koin Self-Service',
     desc: 'Cuci sendiri, hemat & praktis',
@@ -184,7 +176,13 @@ export default function HomeScreen({ navigation }: any) {
             </View>
             <TouchableOpacity
               style={styles.serviceBtn}
-              onPress={() => navigation.navigate('Booking', { service: { name: s.title } })}
+              onPress={() => {
+                if (s.id === 2) {
+                  navigation.navigate('BookingKoin');
+                } else {
+                  navigation.navigate('Booking', { service: { name: s.title } });
+                }
+              }}
             >
               <Text style={styles.serviceBtnText}>Pesan</Text>
             </TouchableOpacity>

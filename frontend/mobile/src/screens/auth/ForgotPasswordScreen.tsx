@@ -37,30 +37,30 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
   if (sent) {
     return (
-      <View style={styles.successContainer}>
-        <View style={styles.successIconBox}>
-          <Text style={styles.successIcon}>📧</Text>
-        </View>
-        <Text style={styles.successTitle}>Cek Email Anda</Text>
-        <Text style={styles.successDesc}>
-          Kami telah mengirim tautan reset password ke{'\n'}
-          <Text style={styles.successEmail}>{email}</Text>
-        </Text>
-        <View style={styles.successInfo}>
+      <View style={styles.successOverlay}>
+        <View style={styles.successCard}>
+          <View style={styles.successIconBox}>
+            <Text style={styles.successIcon}>{'\u2713'}</Text>
+          </View>
+          <Text style={styles.successTitle}>Cek Email Anda</Text>
+          <Text style={styles.successDesc}>
+            Kami telah mengirim tautan reset password ke{'\n'}
+            <Text style={styles.successEmail}>{email}</Text>
+          </Text>
           <Text style={styles.successInfoText}>
             Tidak menerima email? Cek folder spam atau{'\n'}
             <Text style={styles.resendLink} onPress={handleSend}>
               Kirim ulang
             </Text>
           </Text>
+          <TouchableOpacity
+            style={styles.successBtn}
+            onPress={() => navigation.navigate('Login')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.successBtnText}>Kembali ke Login</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.successBtn}
-          onPress={() => navigation.navigate('Login')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.successBtnText}>Kembali ke Login</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -258,60 +258,64 @@ const styles = StyleSheet.create({
   loginLink: { alignItems: 'center', marginTop: Spacing.xl, paddingVertical: Spacing.sm },
   loginText: { ...Typography.body, color: Colors.textMuted },
   loginBold: { color: Colors.text, fontWeight: '700' },
-  successContainer: {
+  successOverlay: {
     flex: 1,
-    backgroundColor: Colors.secondary,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: Spacing.xxl,
+  },
+  successCard: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xxl,
     paddingHorizontal: Spacing.xxxl,
-    gap: Spacing.xl,
+    paddingVertical: Spacing.xxl + Spacing.lg,
+    alignItems: 'center',
+    ...Shadows.lg,
   },
   successIconBox: {
-    width: 80,
-    height: 80,
+    width: 56,
+    height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.primary + '25',
+    backgroundColor: Colors.primary + '20',
     borderWidth: 2,
-    borderColor: Colors.primary + '50',
+    borderColor: Colors.primary + '45',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: Spacing.lg,
   },
-  successIcon: { fontSize: 36 },
+  successIcon: { fontSize: 24, fontWeight: '800', color: Colors.primary },
   successTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#fff',
-    fontFamily: Platform.OS === 'ios' ? 'Plus Jakarta Sans' : undefined,
+    color: Colors.text,
+    textAlign: 'center',
   },
   successDesc: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
+    ...Typography.caption,
+    color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 20,
+    marginTop: Spacing.sm,
   },
-  successEmail: { fontWeight: '700', color: '#fff' },
-  successInfo: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.14)',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    width: '100%',
-  },
+  successEmail: { fontWeight: '700', color: Colors.text },
   successInfoText: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.50)',
+    color: Colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
+    marginTop: Spacing.md,
   },
   resendLink: { fontWeight: '700', color: Colors.primary },
   successBtn: {
     width: '100%',
-    height: 52,
-    borderRadius: 20,
+    height: 48,
+    borderRadius: BorderRadius.lg,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: Spacing.xl,
   },
   successBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });
