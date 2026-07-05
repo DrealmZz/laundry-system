@@ -14,7 +14,7 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const navigation = useNavigation();
 
-  const initials = (user?.name || 'U')
+  const initials = (user?.nama_lengkap || 'U')
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -40,7 +40,7 @@ export default function ProfileScreen() {
           <View style={styles.avatarBox}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          <Text style={styles.userName}>{user?.nama_lengkap || 'User'}</Text>
           <Text style={styles.userEmail}>{user?.email || '-'}</Text>
           <View style={styles.userRoleBadge}>
             <Text style={styles.userRoleText}>{user?.role || 'customer'}</Text>

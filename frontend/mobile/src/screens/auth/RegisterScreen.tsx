@@ -16,18 +16,20 @@ import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 
 export default function RegisterScreen({ navigation }: any) {
-  const [name, setName] = useState('');
+  const [nama_lengkap, setNamaLengkap] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [no_hp, setNoHp] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
+  const [alamat, setAlamat] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!name || !email || !phone || !password || !confirmPass) {
+    if (!nama_lengkap || !username || !email || !no_hp || !password || !confirmPass) {
       return Alert.alert('Error', 'Semua field wajib diisi');
     }
     if (password !== confirmPass) {
@@ -38,7 +40,7 @@ export default function RegisterScreen({ navigation }: any) {
     }
     setLoading(true);
     try {
-      await api.register(name, email, phone, password);
+      await api.register(nama_lengkap, username, email, no_hp, password, alamat || undefined);
       Alert.alert('Berhasil', 'Akun berhasil dibuat', [
         { text: 'Login', onPress: () => navigation.navigate('Login') },
       ]);
@@ -96,9 +98,23 @@ export default function RegisterScreen({ navigation }: any) {
                 style={styles.input}
                 placeholder="Rania Azzahra"
                 placeholderTextColor={Colors.textMuted}
-                value={name}
-                onChangeText={setName}
+                value={nama_lengkap}
+                onChangeText={setNamaLengkap}
                 autoCapitalize="words"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Username</Text>
+            <View style={styles.inputBox}>
+              <TextInput
+                style={styles.input}
+                placeholder="rania123"
+                placeholderTextColor={Colors.textMuted}
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
               />
             </View>
           </View>
@@ -125,9 +141,23 @@ export default function RegisterScreen({ navigation }: any) {
                 style={styles.input}
                 placeholder="08xxxxxxxxxx"
                 placeholderTextColor={Colors.textMuted}
-                value={phone}
-                onChangeText={setPhone}
+                value={no_hp}
+                onChangeText={setNoHp}
                 keyboardType="phone-pad"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Alamat (Opsional)</Text>
+            <View style={styles.inputBox}>
+              <TextInput
+                style={styles.input}
+                placeholder="Jl. Merdeka No. 10"
+                placeholderTextColor={Colors.textMuted}
+                value={alamat}
+                onChangeText={setAlamat}
+                autoCapitalize="words"
               />
             </View>
           </View>

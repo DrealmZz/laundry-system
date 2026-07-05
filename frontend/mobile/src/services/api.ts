@@ -1,6 +1,12 @@
-const BASE_URL = 'http://localhost:3000/api/v1';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-const USE_MOCK = true;
+const BASE_URL =
+  Platform.OS === 'android'
+    ? 'http://10.0.2.2:3000/api/v1'
+    : 'http://localhost:3000/api/v1';
+
+const USE_MOCK = false;
 
 const NOW = new Date();
 const today = NOW.toISOString().split('T')[0];
@@ -13,262 +19,204 @@ const fiveDaysAgo = new Date(NOW.getTime() - 5 * 86400000).toISOString().split('
 const MOCK: Record<string, unknown> = {
   login: {
     token: 'mock-jwt-token',
-    user: { id: 1, name: 'Budi Santoso', email: 'budi@mail.com', role: 'customer', address: 'Jl. Merdeka No. 10, Jakarta' },
+    user: { id: 1, nama_lengkap: 'Budi Santoso', email: 'budi@mail.com', role: 'customer', alamat: 'Jl. Merdeka No. 10, Jakarta' },
   },
   register: { message: 'Registrasi berhasil' },
   forgotPassword: { message: 'Tautan reset password telah dikirim ke email' },
   services: [
-    {
-      id: 1,
-      name: 'Kiloan Reguler',
-      price: 7000,
-      unit: 'kg',
-      desc: 'Cuci + setrika, selesai 2-3 hari',
-      icon: '📦',
-      category: 'kiloan',
-    },
-    {
-      id: 2,
-      name: 'Kiloan Express',
-      price: 12000,
-      unit: 'kg',
-      desc: 'Cuci + setrika, selesai hari ini',
-      icon: '⚡',
-      category: 'kiloan',
-    },
-    {
-      id: 3,
-      name: 'Koin / Self-Service',
-      price: 15000,
-      unit: 'mesin',
-      desc: 'Cuci sendiri di outlet, gratis deterjen',
-      icon: '🪙',
-      category: 'koin',
-    },
-    {
-      id: 4,
-      name: 'Setrika Saja',
-      price: 5000,
-      unit: 'kg',
-      desc: 'Setrika rapi, wangi & siap pakai',
-      icon: '👔',
-      category: 'kiloan',
-    },
-    {
-      id: 5,
-      name: 'selimut / Bed Cover',
-      price: 25000,
-      unit: 'pcs',
-      desc: 'Cuci khusus selimut & bed cover besar',
-      icon: '🛏️',
-      category: 'khusus',
-    },
+    { id_layanan: 1, nama_layanan: 'Kiloan Reguler', harga: 7000, jenis_layanan: 'kiloan', estimasi_waktu: 180 },
+    { id_layanan: 2, nama_layanan: 'Kiloan Express', harga: 12000, jenis_layanan: 'kiloan', estimasi_waktu: 90 },
+    { id_layanan: 3, nama_layanan: 'Koin Cuci Saja', harga: 8000, jenis_layanan: 'koin', estimasi_waktu: 45 },
+    { id_layanan: 4, nama_layanan: 'Koin Cuci + Kering', harga: 12000, jenis_layanan: 'koin', estimasi_waktu: 60 },
   ],
   machines: [
-    { id_mesin: 1, kode_mesin: 'MC-01', nama_mesin: 'Mesin Cuci 1', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
-    { id_mesin: 2, kode_mesin: 'MC-02', nama_mesin: 'Mesin Cuci 2', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
-    { id_mesin: 3, kode_mesin: 'MC-03', nama_mesin: 'Mesin Cuci 3', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
-    { id_mesin: 4, kode_mesin: 'MC-04', nama_mesin: 'Mesin Cuci 4', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
-    { id_mesin: 5, kode_mesin: 'MC-05', nama_mesin: 'Mesin Cuci 5', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
-    { id_mesin: 6, kode_mesin: 'MC-06', nama_mesin: 'Mesin Cuci 6', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 8, harga: 20000 },
+    { id_mesin: 1, kode_mesin: 'MC-01', nama_mesin: 'Mesin Cuci 1', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 10 },
+    { id_mesin: 2, kode_mesin: 'MC-02', nama_mesin: 'Mesin Cuci 2', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 10 },
+    { id_mesin: 3, kode_mesin: 'MC-03', nama_mesin: 'Mesin Cuci 3', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 12 },
+    { id_mesin: 4, kode_mesin: 'MD-01', nama_mesin: 'Mesin Pengering 1', tipe_mesin: 'pengeringan', status_mesin: 'tersedia', kapasitas_kg: 8 },
+    { id_mesin: 5, kode_mesin: 'MD-02', nama_mesin: 'Mesin Pengering 2', tipe_mesin: 'pengeringan', status_mesin: 'tersedia', kapasitas_kg: 8 },
+    { id_mesin: 6, kode_mesin: 'MD-03', nama_mesin: 'Mesin Pengering 3', tipe_mesin: 'pengeringan', status_mesin: 'tersedia', kapasitas_kg: 10 },
   ],
   bookings: [
     {
-      id: 2,
-      service: 'Koin / Self-Service',
-      status: 'selesai',
-      date: yesterday,
+      id_pemesanan: 2,
+      nama_layanan: 'Koin Cuci + Kering',
+      status_pesanan: 'selesai',
+      tanggal_pesanan: yesterday,
       total: 15000,
-      weight: null,
-      shift: 'Siang (11-15)',
-      address: null,
+      berat_kg: null,
+      shift: 'siang',
+      metode_pengambilan: 'ambil_sendiri',
     },
     {
-      id: 3,
-      service: 'Kiloan Reguler',
-      status: 'menunggu_pembayaran',
-      metode_pembayaran: 'qris',
-      date: today,
+      id_pemesanan: 3,
+      nama_layanan: 'Kiloan Reguler',
+      status_pesanan: 'menunggu pembayaran',
+      tanggal_pesanan: today,
       total: 28000,
-      weight: 4,
-      shift: 'Sore (15-19)',
-      address: 'Jl. Sudirman No. 25, Jakarta',
-    },
-    {
-      id: 4,
-      service: 'Setrika Saja',
-      status: 'selesai',
-      date: twoDaysAgo,
-      total: 15000,
-      weight: 3,
-      shift: 'Pagi (07-11)',
-      address: 'Jl. Merdeka No. 10, Jakarta',
-    },
-    {
-      id: 5,
-      service: 'Kiloan Express',
-      status: 'selesai',
-      date: threeDaysAgo,
-      total: 60000,
-      weight: 5,
-      shift: 'Siang (11-15)',
-      address: 'Jl. Merdeka No. 10, Jakarta',
-    },
-    {
-      id: 6,
-      service: 'Koin / Self-Service',
-      status: 'selesai',
-      date: fourDaysAgo,
-      total: 15000,
-      weight: null,
-      shift: 'Pagi (07-11)',
-      address: null,
-    },
-    {
-      id: 7,
-      service: 'Selimut / Bed Cover',
-      status: 'selesai',
-      date: fiveDaysAgo,
-      total: 50000,
-      weight: 2,
-      shift: 'Sore (15-19)',
-      address: 'Jl. Merdeka No. 10, Jakarta',
+      berat_kg: 4,
+      shift: 'sore',
+      metode_pengambilan: 'pengiriman',
     },
   ],
 };
 
 async function request(endpoint: string, options?: RequestInit) {
+  // Auto-attach token
+  const token = await AsyncStorage.getItem('token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((options?.headers as Record<string, string>) || {}),
+  };
+
   const res = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   });
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.message || 'Request gagal');
   }
-  return res.json();
+
+  const result = await res.json();
+  return result.data; // Unwrap { status, data, message }
 }
 
 export const api = {
-  login: (email: string, password: string) =>
+  // Auth
+  login: (identifier: string, password: string) =>
     USE_MOCK
       ? new Promise((resolve) => setTimeout(() => resolve(MOCK.login), 600))
       : request('/auth/login', {
           method: 'POST',
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ identifier, password }),
         }),
 
-  register: (name: string, email: string, phone: string, password: string) =>
+  register: (nama_lengkap: string, username: string, email: string, no_hp: string, password: string, alamat?: string) =>
     USE_MOCK
       ? new Promise((resolve) => setTimeout(() => resolve(MOCK.register), 600))
       : request('/auth/register', {
           method: 'POST',
-          body: JSON.stringify({ name, email, phone, password }),
+          body: JSON.stringify({ nama_lengkap, username, email, no_hp, password, alamat }),
         }),
 
-  getServices: (token: string) =>
+  forgotPassword: (email: string) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve(MOCK.forgotPassword), 800))
+      : request('/auth/forgot-password', {
+          method: 'POST',
+          body: JSON.stringify({ email }),
+        }),
+
+  getProfile: () =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve(MOCK.login), 400))
+      : request('/auth/me'),
+
+  // Services
+  getServices: () =>
     USE_MOCK
       ? new Promise((resolve) => setTimeout(() => resolve(MOCK.services), 400))
-      : request('/services', {
-          headers: { Authorization: `Bearer ${token}` },
-        } as RequestInit),
+      : request('/services'),
 
-  getBookings: (token: string) =>
+  // Bookings
+  getBookings: () =>
     USE_MOCK
       ? new Promise((resolve) => setTimeout(() => resolve(MOCK.bookings), 500))
-      : request('/bookings', {
-          headers: { Authorization: `Bearer ${token}` },
-        } as RequestInit),
+      : request('/pemesanan'),
 
-  createBooking: (token: string, data: object) =>
+  createBooking: (data: object) =>
     USE_MOCK
       ? new Promise((resolve) => {
           const d = data as Record<string, unknown>;
           const bookings = MOCK.bookings as Array<Record<string, unknown>>;
           const newBooking = {
-            id: Math.floor(Math.random() * 9000) + 100,
-            service: (d.service as string) || 'Laundry',
-            status: 'menunggu_konfirmasi',
-            metode_pembayaran: null,
-            date: (d.date as string) || (d.tanggal_pesanan as string) || today,
+            id_pemesanan: Math.floor(Math.random() * 9000) + 100,
+            nama_layanan: (d.nama_layanan as string) || 'Laundry',
+            status_pesanan: 'menunggu konfirmasi',
+            tanggal_pesanan: (d.tanggal_pesanan as string) || today,
             shift: (d.shift as string) || '',
-            total: (d.total as number) || 0,
-            weight: (d.weight as number) || null,
-            address: (d.address as string) || null,
+            total: 0,
+            berat_kg: (d.berat_kg as number) || null,
+            metode_pengambilan: (d.metode_pengambilan as string) || 'ambil_sendiri',
           };
           bookings.unshift(newBooking);
           setTimeout(() => resolve(newBooking), 800);
         })
-      : request('/bookings', {
+      : request('/pemesanan', {
           method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          } as HeadersInit,
           body: JSON.stringify(data),
         }),
 
-  getMachines: (token: string) =>
+  getBookingDetail: (id: number) =>
     USE_MOCK
-      ? new Promise((resolve) =>
-          setTimeout(() => resolve(MOCK.machines), 400),
-        )
-      : request('/mesin', {
-          headers: { Authorization: `Bearer ${token}` },
-        } as RequestInit),
+      ? new Promise((resolve) => {
+          const bookings = MOCK.bookings as Array<Record<string, unknown>>;
+          const booking = bookings.find((b) => b.id_pemesanan === id);
+          setTimeout(() => resolve(booking || null), 400);
+        })
+      : request(`/pemesanan/${id}`),
 
-  getAvailableMachines: (token: string, tanggal: string, shift: string) =>
+  // Machines
+  getMachines: () =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve(MOCK.machines), 400))
+      : request('/mesin'),
+
+  getAvailableMachines: (tanggal: string, shift: string) =>
     USE_MOCK
       ? new Promise((resolve) => {
           const available = (MOCK.machines as any[]).filter((m) => m.status_mesin === 'tersedia');
           setTimeout(() => resolve(available), 400);
         })
-      : request(`/mesin/available?tanggal=${tanggal}&shift=${shift}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        } as RequestInit),
+      : request(`/mesin/available?tanggal=${tanggal}&shift=${shift}`),
 
-  getPaymentInfo: (token: string, bookingId: number) =>
+  // Transactions
+  getTransactions: () =>
     USE_MOCK
-      ? new Promise((resolve) =>
-          setTimeout(
-            () =>
-              resolve({
-                id: bookingId,
-                qris_data: `laundaja:${bookingId}:${bookingId * 10000 + 10000}`,
-                total: bookingId * 10000 + 10000,
-                service: 'Kiloan Reguler',
-                date: today,
-              }),
-            500,
-          ),
-        )
-      : request(`/transaksi/${bookingId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        } as RequestInit),
+      ? new Promise((resolve) => setTimeout(() => resolve([]), 400))
+      : request('/transaksi'),
 
-  checkPaymentStatus: (token: string, bookingId: number) =>
+  getTransactionDetail: (id: number) =>
     USE_MOCK
-      ? new Promise((resolve) => {
-          setTimeout(() => {
-            const bookings = MOCK.bookings as Array<Record<string, unknown>>;
-            const idx = bookings.findIndex((b) => b.id === bookingId);
-            if (idx !== -1) {
-              bookings[idx].status = 'diproses';
-            }
-            resolve({ paid: true, id: bookingId, status: 'diproses' });
-          }, 1200);
-        })
-      : request(`/transaksi/${bookingId}/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        } as RequestInit),
+      ? new Promise((resolve) => setTimeout(() => resolve(null), 400))
+      : request(`/transaksi/${id}`),
 
-  forgotPassword: (email: string) =>
+  confirmPayment: (id: number, metode_pembayaran: string) =>
     USE_MOCK
-      ? new Promise((resolve) =>
-          setTimeout(() => resolve(MOCK.forgotPassword), 800),
-        )
-      : request('/auth/lupa-password', {
-          method: 'POST',
-          body: JSON.stringify({ email }),
-          headers: { 'Content-Type': 'application/json' },
-        } as RequestInit),
+      ? new Promise((resolve) => setTimeout(() => resolve({ status_pembayaran: 'lunas' }), 400))
+      : request(`/transaksi/${id}/pay`, {
+          method: 'PATCH',
+          body: JSON.stringify({ metode_pembayaran }),
+        }),
+
+  generateQR: (id: number) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve({
+          qris_data: `laundaja:${id}:38500:${Date.now()}`,
+          total: 38500,
+          id_transaksi: id,
+          nomor_struk: `STRUK-20260706-${String(id).padStart(4, '0')}`
+        }), 400))
+      : request(`/transaksi/${id}/qris`),
+
+  // Notifications
+  getNotifications: (page = 1, limit = 20) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve({ items: [], total: 0 }), 400))
+      : request(`/notifications?page=${page}&limit=${limit}`),
+
+  getUnreadCount: () =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve({ unread_count: 0 }), 400))
+      : request('/notifications/count'),
+
+  markAsRead: (id: number) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve(null), 200))
+      : request(`/notifications/${id}/read`, {
+          method: 'PATCH',
+        }),
 };

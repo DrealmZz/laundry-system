@@ -5,30 +5,68 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import StatusBadge from '../../components/StatusBadge';
 
 const STATUS_ORDER = [
-  'menunggu_konfirmasi',
-  'dikonfirmasi',
-  'menunggu_pembayaran',
+  'menunggu konfirmasi',
+  'disetujui',
+  'penjemputan',
+  'penimbangan',
+  'menunggu pembayaran',
+  'sudah dibayar',
   'diproses',
+  'sedang di cuci',
+  'sedang di keringkan',
+  'sedang di setrika',
+  'pencucian selesai',
+  'pengiriman',
   'selesai',
 ];
 
-const STATUS_DOTS: Record<string, { label: string; color: string; desc: string }> = {
-  menunggu_konfirmasi: { label: 'Menunggu Konfirmasi', color: '#D97706', desc: 'Pesanan kamu sedang menunggu konfirmasi dari tim kami' },
-  dikonfirmasi: { label: 'Dikonfirmasi', color: Colors.secondary, desc: 'Tim kami sudah menerima dan mengonfirmasi pesanan kamu' },
-  menunggu_pembayaran: { label: 'Menunggu Pembayaran', color: Colors.error, desc: 'Tim kami sudah menimbang, silakan lakukan pembayaran' },
-  diproses: { label: 'Diproses', color: '#7C3AED', desc: 'Pembayaran berhasil, cucian kamu sedang diproses' },
-  selesai: { label: 'Selesai', color: '#059669', desc: 'Pesanan sudah selesai dan siap diambil' },
+// Warna konsisten (coklat)
+const ACTIVE_COLOR = '#A87A4E';   // Coklat gelap
+const INACTIVE_COLOR = '#E8DFD0'; // Cream gelap
+
+// Label untuk setiap status
+const STATUS_LABELS: Record<string, string> = {
+  'menunggu konfirmasi': 'Menunggu Konfirmasi',
+  'disetujui': 'Disetujui',
+  'penjemputan': 'Penjemputan',
+  'penimbangan': 'Penimbangan',
+  'menunggu pembayaran': 'Menunggu Bayar',
+  'sudah dibayar': 'Sudah Dibayar',
+  'diproses': 'Diproses',
+  'sedang di cuci': 'Sedang Dicuci',
+  'sedang di keringkan': 'Sedang Dikeringkan',
+  'sedang di setrika': 'Sedang Disetrika',
+  'pencucian selesai': 'Cucian Selesai',
+  'pengiriman': 'Pengiriman',
+  'selesai': 'Selesai',
+};
+
+// Deskripsi untuk setiap status
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  'menunggu konfirmasi': 'Pesanan kamu sedang menunggu konfirmasi dari tim kami',
+  'disetujui': 'Tim kami sudah menyetujui pesanan kamu',
+  'penjemputan': 'Kurir sedang dalam perjalanan untuk menjemput pakaian',
+  'penimbangan': 'Pakaian sedang ditimbang untuk menghitung biaya',
+  'menunggu pembayaran': 'Silakan lakukan pembayaran',
+  'sudah dibayar': 'Pembayaran berhasil, pesanan akan segera diproses',
+  'diproses': 'Pesanan sedang diproses',
+  'sedang di cuci': 'Cucian kamu sedang dalam proses pencucian',
+  'sedang di keringkan': 'Cucian kamu sedang dalam proses pengeringan',
+  'sedang di setrika': 'Cucian kamu sedang dalam proses setrika',
+  'pencucian selesai': 'Cucian kamu sudah selesai diproses',
+  'pengiriman': 'Pakaian sedang dalam perjalanan ke alamat Anda',
+  'selesai': 'Pesanan sudah selesai dan sudah diterima',
 };
 
 export default function TrackingScreen({ route, navigation }: any) {
   const { item } = route.params!;
-  const currentIdx = STATUS_ORDER.indexOf(item.status);
+  const currentStatus = item.status_pesanan || item.status;
+  const currentIdx = STATUS_ORDER.indexOf(currentStatus);
 
   return (
     <View style={styles.container}>
@@ -38,9 +76,9 @@ export default function TrackingScreen({ route, navigation }: any) {
         </TouchableOpacity>
         <View style={styles.headerTextWrap}>
           <Text style={styles.headerTitle}>Tracking Pesanan</Text>
-          <Text style={styles.headerSub}>{item.service}</Text>
+          <Text style={styles.headerSub}>{item.nama_layanan || item.service}</Text>
         </View>
-        <StatusBadge status={item.status} />
+        <StatusBadge status={currentStatus} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -48,17 +86,17 @@ export default function TrackingScreen({ route, navigation }: any) {
           <Text style={styles.infoTitle}>Informasi Pesanan</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>ID Pesanan</Text>
-            <Text style={styles.infoValue}>#{item.id}</Text>
+            <Text style={styles.infoValue}>#{item.id_pemesanan || item.id}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Layanan</Text>
-            <Text style={styles.infoValue}>{item.service}</Text>
+            <Text style={styles.infoValue}>{item.nama_layanan || item.service}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Tanggal</Text>
-            <Text style={styles.infoValue}>{item.date}</Text>
+            <Text style={styles.infoValue}>{item.tanggal_pesanan || item.date}</Text>
           </View>
           {item.shift ? (
             <>
@@ -69,21 +107,21 @@ export default function TrackingScreen({ route, navigation }: any) {
               </View>
             </>
           ) : null}
-          {item.weight ? (
+          {(item.berat_kg || item.weight) ? (
             <>
               <View style={styles.divider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Berat</Text>
-                <Text style={styles.infoValue}>{item.weight} kg</Text>
+                <Text style={styles.infoValue}>{item.berat_kg || item.weight} kg</Text>
               </View>
             </>
           ) : null}
-          {item.address ? (
+          {(item.alamat || item.address) ? (
             <>
               <View style={styles.divider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Alamat</Text>
-                <Text style={styles.infoValue}>{item.address}</Text>
+                <Text style={styles.infoValue}>{item.alamat || item.address}</Text>
               </View>
             </>
           ) : null}
@@ -92,7 +130,7 @@ export default function TrackingScreen({ route, navigation }: any) {
               <View style={styles.divider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Total</Text>
-                <Text style={styles.infoValueBold}>Rp{item.total.toLocaleString('id-ID')}</Text>
+                <Text style={styles.infoValueBold}>Rp{(item.total || 0).toLocaleString('id-ID')}</Text>
               </View>
             </>
           ) : null}
@@ -102,27 +140,27 @@ export default function TrackingScreen({ route, navigation }: any) {
           <Text style={styles.timelineTitle}>Status Pesanan</Text>
           <View style={styles.timeline}>
             {STATUS_ORDER.map((s, i) => {
-              const dot = STATUS_DOTS[s];
               const isActive = i <= currentIdx;
+              const label = STATUS_LABELS[s] || s;
+              const desc = STATUS_DESCRIPTIONS[s] || '';
+              const color = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
               const isLast = i === STATUS_ORDER.length - 1;
               const isCurrent = i === currentIdx;
 
               return (
                 <View key={s} style={styles.timelineItem}>
                   <View style={styles.timelineLeft}>
-                    <View style={[styles.timelineDot, styles.timelineDotOuter, isActive && { borderColor: dot.color }]}>
-                      {isActive && <View style={[styles.timelineDotInner, { backgroundColor: dot.color }]} />}
-                    </View>
+                    <View style={[styles.timelineDot, { backgroundColor: color }]} />
                     {!isLast && (
-                      <View style={[styles.timelineLine, { backgroundColor: i < currentIdx ? dot.color : Colors.borderLight }]} />
+                      <View style={[styles.timelineLine, { backgroundColor: color }]} />
                     )}
                   </View>
                   <View style={[styles.timelineRight, isCurrent && styles.timelineRightActive]}>
-                    <Text style={[styles.timelineLabel, { color: isActive ? dot.color : Colors.textMuted, fontWeight: isActive ? '700' : '400' }]}>
-                      {dot.label}
+                    <Text style={[styles.timelineLabel, { color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR, fontWeight: isActive ? '700' : '400' }]}>
+                      {label}
                     </Text>
                     <Text style={[styles.timelineDesc, { color: isActive ? Colors.textSecondary : Colors.textMuted }]}>
-                      {dot.desc}
+                      {desc}
                     </Text>
                   </View>
                 </View>
@@ -131,15 +169,15 @@ export default function TrackingScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        {item.status === 'menunggu_pembayaran' && item.metode_pembayaran === 'qris' && (
+        {currentStatus === 'menunggu pembayaran' && (
           <TouchableOpacity
             style={styles.payBtn}
             onPress={() =>
               navigation.navigate('QrisPayment', {
-                bookingId: item.id,
+                bookingId: item.id_pemesanan || item.id,
                 total: item.total,
-                serviceName: item.service,
-                bookingDate: item.date,
+                serviceName: item.nama_layanan || item.service,
+                bookingDate: item.tanggal_pesanan || item.date,
               })
             }
             activeOpacity={0.85}
@@ -218,24 +256,14 @@ const styles = StyleSheet.create({
   },
   timelineLeft: {
     alignItems: 'center',
-    width: 32,
+    width: 24,
     marginRight: Spacing.md,
   },
-  timelineDotOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2.5,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
-  timelineDotInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  timelineDot: {},
   timelineLine: {
     width: 2,
     flex: 1,
@@ -243,7 +271,7 @@ const styles = StyleSheet.create({
   },
   timelineRight: {
     flex: 1,
-    paddingTop: 1,
+    paddingTop: 0,
     paddingBottom: Spacing.md,
   },
   timelineRightActive: {

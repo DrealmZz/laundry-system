@@ -1,13 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type User = { id: number; name: string; email: string; role: string; address?: string };
+type User = { 
+  id: number; 
+  nama_lengkap: string; 
+  email: string; 
+  role: string; 
+  alamat?: string;
+  no_hp?: string;
+};
 type AuthContextType = {
   user: User | null;
   token: string | null;
   login: (token: string, user: User) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   isLoading: boolean;
 };
 
@@ -82,8 +90,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(updated);
   };
 
+  const refreshProfile = async () => {
+    if (!token) return;
+    try {
+      const { api } = await import('../services/api');
+      const userData = await api.getProfile();
+      setUser(userData as User);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, updateProfile, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, updateProfile, refreshProfile, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

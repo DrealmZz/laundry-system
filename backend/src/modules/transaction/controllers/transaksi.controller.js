@@ -76,3 +76,79 @@ exports.getTransaksiByStruk = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.confirmPayment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { metode_pembayaran } = req.body;
+
+    if (!metode_pembayaran) {
+      return res.status(400).json({
+        status: 'error',
+        data: null,
+        message: 'metode_pembayaran wajib diisi.'
+      });
+    }
+
+    const transaksi = await transaksiService.confirmPayment(parseInt(id), metode_pembayaran);
+
+    res.status(200).json({
+      status: 'success',
+      data: transaksi,
+      message: 'Pembayaran berhasil dikonfirmasi'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getDailyRecap = async (req, res, next) => {
+  try {
+    const { tanggal, shift } = req.query;
+    const id_karyawan = req.user.id;
+
+    const recap = await transaksiService.getDailyRecap({
+      tanggal: tanggal || new Date().toISOString().split('T')[0],
+      id_karyawan,
+      shift
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: recap,
+      message: 'Rekap harian berhasil diambil'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.generatePDF = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const doc = await transaksiService.generatePDF(parseInt(id));
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="STRUK-${id}.pdf"`);
+
+    doc.pipe(res);
+    doc.end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.generateQR = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const qrData = await transaksiService.generateQR(parseInt(id));
+
+    res.status(200).json({
+      status: 'success',
+      data: qrData,
+      message: 'QR code berhasil di-generate'
+    });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -102,17 +102,7 @@ export default function AppNavigator() {
             <Stack.Screen
               name="Booking"
               component={BookingScreen}
-              options={{
-                headerShown: true,
-                title: 'Booking Layanan',
-                headerTintColor: Colors.primary,
-                headerStyle: { backgroundColor: Colors.surface },
-                headerShadowVisible: false,
-                headerTitleStyle: {
-                  fontWeight: '600',
-                  fontSize: 17,
-                },
-              }}
+              options={{ headerShown: false }}
             />
             <Stack.Screen
               name="BookingKoin"

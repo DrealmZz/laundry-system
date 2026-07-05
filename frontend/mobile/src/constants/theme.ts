@@ -17,6 +17,11 @@ export const Colors = {
   textMuted: '#8A7D65',
   border: '#C89B6D',
   borderLight: '#EDE7CC',
+  
+  // Status colors (konsisten - coklat)
+  statusActive: '#A87A4E',      // Coklat gelap untuk semua status aktif
+  statusInactive: '#E8DFD0',    // Cream gelap untuk status non-aktif
+  statusBackground: '#FEFCF5',  // Background card
 };
 
 export const Spacing = {

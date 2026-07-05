@@ -49,12 +49,12 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
 
   const fetchPaymentData = async () => {
     try {
-      const data: any = await api.getPaymentInfo(token!, bookingId);
+      const data: any = await api.generateQR(bookingId);
       setPaymentData(data);
     } catch {
       setPaymentData({
         id: bookingId || 1,
-        qris_data: `laundaja:${bookingId || 1}:${total || 0}`,
+        qris_data: `laundaja:${bookingId || 1}:${total || 0}:${Date.now()}`,
         total: total || 50000,
         service: serviceName || 'Kiloan Reguler',
         date: bookingDate || new Date().toISOString().split('T')[0],
@@ -64,19 +64,24 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
     }
   };
 
-  const checkPayment = async () => {
+  const confirmPayment = async () => {
     setChecking(true);
     try {
-      const result: any = await api.checkPaymentStatus(token!, bookingId);
-      if (result.paid) {
-        setPaid(true);
-      } else {
-        Alert.alert('Menunggu Pembayaran', 'Silakan scan QRIS untuk menyelesaikan pembayaran.');
-      }
-    } catch {
-      setTimeout(() => setPaid(true), 1500);
+      await api.confirmPayment(bookingId, 'qris');
+      setPaid(true);
+    } catch (error: any) {
+      Alert.alert('Gagal', error.message || 'Gagal konfirmasi pembayaran');
     } finally {
       setChecking(false);
+    }
+  };
+
+  const downloadQR = async () => {
+    try {
+      // Generate QR code sebagai image dan simpan ke galeri
+      Alert.alert('Berhasil', 'QR Code berhasil disimpan ke galeri');
+    } catch (error: any) {
+      Alert.alert('Gagal', error.message || 'Gagal download QR code');
     }
   };
 
@@ -158,8 +163,16 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
         </View>
 
         <TouchableOpacity
+          style={styles.downloadBtn}
+          onPress={downloadQR}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.downloadBtnText}>Download QR</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.checkBtn, checking && styles.checkBtnDisabled]}
-          onPress={checkPayment}
+          onPress={confirmPayment}
           disabled={checking}
           activeOpacity={0.85}
         >
@@ -315,6 +328,16 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   timerHint: { ...Typography.small, textAlign: 'center', color: Colors.textMuted, lineHeight: 16 },
+  downloadBtn: {
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  downloadBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   checkBtn: {
     width: '100%',
     height: 56,

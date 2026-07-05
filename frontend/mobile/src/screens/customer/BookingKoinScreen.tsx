@@ -72,7 +72,7 @@ export default function BookingKoinScreen({ navigation }: any) {
     fetchAvailableRef.current = true;
     const refId = fetchAvailableRef.current;
 
-    api.getAvailableMachines(token!, tanggal, jamMulai).then((data: any) => {
+    api.getAvailableMachines(tanggal, jamMulai).then((data: any) => {
       if (refId !== fetchAvailableRef.current) return;
       setMachines(data);
       setLoadingMachines(false);
@@ -81,7 +81,7 @@ export default function BookingKoinScreen({ navigation }: any) {
       setMachines([]);
       setLoadingMachines(false);
     });
-  }, [tanggal, jamMulai, token]);
+  }, [tanggal, jamMulai]);
 
   const toISO = (d: Date) => d.toISOString().split('T')[0];
 
@@ -130,17 +130,14 @@ export default function BookingKoinScreen({ navigation }: any) {
 
     setSubmitting(true);
     try {
-      await api.createBooking(token!, {
-        id_layanan: 3,
-        id_mesin: selectedMachine,
-        jenis_pencucian: 'koin',
-        jenis_cuci: jenisCuci,
+      await api.createBooking({
+        id_layanan: jenisCuci === 'cuci_saja' ? 3 : 4, // Koin Cuci Saja or Koin Cuci + Kering
+        mesin_ids: [selectedMachine],
         tanggal_pesanan: tanggal,
         shift: jamMulai,
+        jenis_pencucian: 'koin',
         metode_pengambilan: 'ambil_sendiri',
-        catatan: catatan,
-        total: totalHarga,
-        service: 'Koin / Self-Service',
+        catatan: catatan || null,
       });
       setSuccess(true);
     } catch (e: any) {

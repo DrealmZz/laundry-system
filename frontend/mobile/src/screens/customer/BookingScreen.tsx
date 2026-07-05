@@ -61,13 +61,13 @@ export default function BookingScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      await api.createBooking(token!, {
-        service: jenisLayanan === 'reguler' ? 'Kiloan Reguler' : 'Kiloan Express',
-        date: tanggal,
-        shift: SHIFTS.find((s) => s.id === jamShift)?.label || jamShift,
-        address: alamat,
-        notes: catatan,
-        total: jenisLayanan === 'express' ? 9000 : 5000,
+      await api.createBooking({
+        id_layanan: jenisLayanan === 'reguler' ? 1 : 2, // Kiloan Reguler or Express
+        tanggal_pesanan: tanggal,
+        shift: jamShift,
+        jenis_pencucian: 'kiloan',
+        metode_pengambilan: 'pengiriman',
+        catatan: catatan || null,
       });
       setSuccess(true);
     } catch (e: any) {
@@ -75,7 +75,7 @@ export default function BookingScreen({ route, navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, [jenisLayanan, alamat, tanggal, jamShift, catatan, token]);
+  }, [jenisLayanan, alamat, tanggal, jamShift, catatan]);
 
   return (
     <KeyboardAvoidingView

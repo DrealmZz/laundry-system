@@ -85,10 +85,10 @@ class PemesananRepository {
     return rows[0];
   }
 
-  async cancel(id, catatan) {
+  async cancel(id, catatan, status = 'pesanan ditolak') {
     const { rows } = await db.query(
       'UPDATE pemesanan SET status_pesanan = $1, catatan = $2 WHERE id_pemesanan = $3 RETURNING *',
-      ['pesanan ditolak', catatan, id]
+      [status, catatan, id]
     );
     return rows[0];
   }

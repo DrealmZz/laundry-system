@@ -132,6 +132,96 @@ class TransaksiRepository {
     );
     return rows.length > 0;
   }
+
+  async updatePaymentStatus(id, metode_pembayaran) {
+    const { rows } = await db.query(
+      `UPDATE transaksi 
+       SET status_pembayaran = 'lunas', metode_pembayaran = $1
+       WHERE id_transaksi = $2
+       RETURNING *`,
+      [metode_pembayaran, id]
+    );
+    return rows[0];
+  }
+
+  async getDailyRecap({ tanggal, id_karyawan, shift }) {
+    let query = `
+      SELECT 
+        COUNT(*) AS total_transaksi, 
+        SUM(total) AS total_pendapatan,
+        COUNT(CASE WHEN status_pembayaran = 'lunas' THEN 1 END) AS transaksi_lunas,
+        COUNT(CASE WHEN status_pembayaran = 'belum dibayar' THEN 1 END) AS transaksi_belum_lunas
+      FROM transaksi t
+      JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
+      WHERE DATE(t.tanggal_transaksi) = $1
+        AND t.id_karyawan = $2
+    `;
+    const params = [tanggal, id_karyawan];
+    let paramIndex = 3;
+
+    if (shift) {
+      query += ` AND p.shift = $${paramIndex++}`;
+      params.push(shift);
+    }
+
+    const { rows } = await db.query(query, params);
+    return rows[0];
+  }
+
+  async getDailyRecapByPaymentMethod({ tanggal, id_karyawan }) {
+    const { rows } = await db.query(
+      `SELECT metode_pembayaran, COUNT(*) AS jumlah
+       FROM transaksi t
+       JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
+       WHERE DATE(t.tanggal_transaksi) = $1
+         AND t.id_karyawan = $2
+       GROUP BY metode_pembayaran`,
+      [tanggal, id_karyawan]
+    );
+    return rows;
+  }
+
+  async getDailyRecapDetails({ tanggal, id_karyawan, shift }) {
+    let query = `
+      SELECT t.id_transaksi, t.nomor_struk, c.nama_lengkap, t.total, 
+             t.metode_pembayaran, t.status_pembayaran
+      FROM transaksi t
+      JOIN customer c ON t.id_customer = c.id_customer
+      JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
+      WHERE DATE(t.tanggal_transaksi) = $1
+        AND t.id_karyawan = $2
+    `;
+    const params = [tanggal, id_karyawan];
+    let paramIndex = 3;
+
+    if (shift) {
+      query += ` AND p.shift = $${paramIndex++}`;
+      params.push(shift);
+    }
+
+    query += ' ORDER BY t.tanggal_transaksi';
+
+    const { rows } = await db.query(query, params);
+    return rows;
+  }
+
+  async findByIdWithDetails(id) {
+    const { rows } = await db.query(
+      `SELECT t.*, 
+              p.status_pesanan, p.berat_kg, p.jenis_pencucian, p.tanggal_pesanan, p.shift,
+              c.nama_lengkap AS nama_customer, c.no_hp AS no_hp_customer, c.alamat AS alamat_customer,
+              k.nama_lengkap AS nama_karyawan,
+              l.nama_layanan, l.jenis_layanan, l.harga
+       FROM transaksi t
+       JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
+       JOIN customer c ON t.id_customer = c.id_customer
+       JOIN karyawan k ON t.id_karyawan = k.id_karyawan
+       JOIN layanan l ON p.id_layanan = l.id_layanan
+       WHERE t.id_transaksi = $1`,
+      [id]
+    );
+    return rows[0] || null;
+  }
 }
 
 module.exports = new TransaksiRepository();

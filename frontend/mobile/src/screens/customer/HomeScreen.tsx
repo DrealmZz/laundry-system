@@ -81,7 +81,7 @@ export default function HomeScreen({ navigation }: any) {
   const doneCount = orderSteps.filter((s) => s.done).length;
   const pct = (doneCount / orderSteps.length) * 100;
 
-  const initials = (user?.name || 'U')
+  const initials = (user?.nama_lengkap || 'U')
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -124,7 +124,7 @@ export default function HomeScreen({ navigation }: any) {
 
         <Text style={styles.greetingLabel}>Selamat datang</Text>
         <Text style={styles.greetingName}>
-          Halo, {user?.name?.split(' ')[0] || 'User'} 👋
+          Halo, {user?.nama_lengkap?.split(' ')[0] || 'User'} 👋
         </Text>
         <Text style={styles.greetingSub}>
           Ada {activeBookings.length} pesanan aktif hari ini

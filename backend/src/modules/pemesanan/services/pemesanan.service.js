@@ -66,31 +66,54 @@ class PemesananService {
     return pemesananRepository.updateStatus(id, newStatus);
   }
 
-  async cancelPemesanan(id, catatan, userRole) {
+  async cancelPemesanan(id, catatan, userRole, userId) {
     const pemesanan = await pemesananRepository.findById(id);
     if (!pemesanan) {
       throw Object.assign(new Error('Pemesanan tidak ditemukan.'), { statusCode: 404 });
     }
 
-    if (!['admin', 'kasir'].includes(userRole)) {
-      throw Object.assign(new Error('Hanya admin atau kasir yang bisa membatalkan pemesanan.'), { statusCode: 403 });
+    // Admin/kasir bisa batalkan kapan saja
+    if (['admin', 'kasir'].includes(userRole)) {
+      return pemesananRepository.cancel(id, catatan, 'pesanan ditolak');
     }
 
-    return pemesananRepository.cancel(id, catatan);
+    // Customer hanya bisa batalkan pesanan miliknya dengan status tertentu
+    if (userRole === 'customer') {
+      if (pemesanan.id_customer !== userId) {
+        throw Object.assign(new Error('Anda tidak memiliki akses untuk membatalkan pesanan ini.'), { statusCode: 403 });
+      }
+
+      const allowedStatuses = ['menunggu konfirmasi', 'menunggu pembayaran'];
+      if (!allowedStatuses.includes(pemesanan.status_pesanan)) {
+        throw Object.assign(
+          new Error(`Tidak bisa membatalkan pesanan dengan status '${pemesanan.status_pesanan}'.`),
+          { statusCode: 400 }
+        );
+      }
+
+      return pemesananRepository.cancel(id, catatan, 'pesanan dibatalkan');
+    }
+
+    throw Object.assign(new Error('Anda tidak memiliki akses.'), { statusCode: 403 });
   }
 
   _getValidTransitions(currentStatus, role) {
     const transitions = {
-      'menunggu konfirmasi': ['diproses', 'pesanan ditolak'],
+      'menunggu konfirmasi': ['disetujui', 'pesanan ditolak', 'pesanan dibatalkan'],
+      'disetujui': ['penjemputan', 'pesanan ditolak'],
+      'penjemputan': ['penimbangan', 'pesanan ditolak'],
+      'penimbangan': ['menunggu pembayaran', 'pesanan ditolak'],
+      'menunggu pembayaran': ['sudah dibayar', 'pesanan dibatalkan'],
+      'sudah dibayar': ['diproses'],
       'diproses': ['sedang di cuci', 'pesanan ditolak'],
       'sedang di cuci': ['sedang di keringkan', 'pesanan ditolak'],
-      'sedang di keringkan': ['sedang di setrika', 'pesanan ditolak'],
+      'sedang di keringkan': ['sedang di setrika', 'pencucian selesai', 'pesanan ditolak'],
       'sedang di setrika': ['pencucian selesai', 'pesanan ditolak'],
-      'pencucian selesai': ['menunggu pembayaran', 'pesanan ditolak'],
-      'menunggu pembayaran': ['sudah dibayar', 'pesanan ditolak'],
-      'sudah dibayar': ['selesai'],
+      'pencucian selesai': ['pengiriman', 'pesanan ditolak'],
+      'pengiriman': ['selesai'],
       'selesai': [],
       'pesanan ditolak': [],
+      'pesanan dibatalkan': [],
     };
 
     return transitions[currentStatus] || [];

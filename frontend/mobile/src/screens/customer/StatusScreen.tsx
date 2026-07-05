@@ -18,19 +18,40 @@ import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 
 const STATUS_ORDER = [
-  'menunggu_konfirmasi',
-  'dikonfirmasi',
-  'menunggu_pembayaran',
+  'menunggu konfirmasi',
+  'disetujui',
+  'penjemputan',
+  'penimbangan',
+  'menunggu pembayaran',
+  'sudah dibayar',
   'diproses',
+  'sedang di cuci',
+  'sedang di keringkan',
+  'sedang di setrika',
+  'pencucian selesai',
+  'pengiriman',
   'selesai',
 ];
 
-const STATUS_DOTS: Record<string, { label: string; color: string }> = {
-  menunggu_konfirmasi: { label: 'Menunggu', color: '#D97706' },
-  dikonfirmasi: { label: 'Dikonfirmasi', color: Colors.secondary },
-  menunggu_pembayaran: { label: 'Bayar', color: Colors.error },
-  diproses: { label: 'Diproses', color: '#7C3AED' },
-  selesai: { label: 'Selesai', color: '#059669' },
+// Warna konsisten (coklat)
+const ACTIVE_COLOR = '#A87A4E';   // Coklat gelap
+const INACTIVE_COLOR = '#E8DFD0'; // Cream gelap
+
+// Label untuk setiap status
+const STATUS_LABELS: Record<string, string> = {
+  'menunggu konfirmasi': 'Menunggu',
+  'disetujui': 'Disetujui',
+  'penjemputan': 'Dijemput',
+  'penimbangan': 'Ditimbang',
+  'menunggu pembayaran': 'Bayar',
+  'sudah dibayar': 'Dibayar',
+  'diproses': 'Diproses',
+  'sedang di cuci': 'Dicuci',
+  'sedang di keringkan': 'Dikeringkan',
+  'sedang di setrika': 'Disetrika',
+  'pencucian selesai': 'Selesai Cuci',
+  'pengiriman': 'Dikirim',
+  'selesai': 'Selesai',
 };
 
 function Timeline({ status }: { status: string }) {
@@ -39,40 +60,21 @@ function Timeline({ status }: { status: string }) {
   return (
     <View style={styles.timeline}>
       {STATUS_ORDER.map((s, i) => {
-        const dot = STATUS_DOTS[s];
         const isActive = i <= currentIdx;
+        const label = STATUS_LABELS[s] || s;
+        const color = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
         const isLast = i === STATUS_ORDER.length - 1;
 
         return (
           <View key={s} style={styles.timelineItem}>
             <View style={styles.timelineLeft}>
-              <View
-                style={[
-                  styles.timelineDot,
-                  { backgroundColor: isActive ? dot.color : Colors.border },
-                ]}
-              />
+              <View style={[styles.timelineDot, { backgroundColor: color }]} />
               {!isLast && (
-                <View
-                  style={[
-                    styles.timelineLine,
-                    {
-                      backgroundColor: i < currentIdx ? dot.color : Colors.border,
-                    },
-                  ]}
-                />
+                <View style={[styles.timelineLine, { backgroundColor: color }]} />
               )}
             </View>
-            <Text
-              style={[
-                styles.timelineLabel,
-                {
-                  color: isActive ? dot.color : Colors.textMuted,
-                  fontWeight: isActive ? '600' : '400',
-                },
-              ]}
-            >
-              {dot.label}
+            <Text style={[styles.timelineLabel, { color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR }]}>
+              {label}
             </Text>
           </View>
         );
@@ -90,9 +92,12 @@ export default function StatusScreen() {
 
   const fetchBookings = async () => {
     try {
-      const data: any = await api.getBookings(token!);
-      const active = data.filter(
-        (b: any) => b.status !== 'selesai' && b.status !== 'ditolak',
+      const data: any = await api.getBookings();
+      const items = data.items || data;
+      const active = items.filter(
+        (b: any) => b.status_pesanan !== 'selesai' 
+          && b.status_pesanan !== 'pesanan ditolak'
+          && b.status_pesanan !== 'pesanan dibatalkan',
       );
       setBookings(active);
     } catch {
@@ -131,7 +136,7 @@ export default function StatusScreen() {
 
       <FlatList
         data={bookings}
-        keyExtractor={(i) => String(i.id)}
+        keyExtractor={(i) => String(i.id_pemesanan || i.id)}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -146,31 +151,31 @@ export default function StatusScreen() {
           <Pressable onPress={() => (navigation as any).navigate('Tracking', { item })}>
           <Card style={styles.orderCard}>
             <View style={styles.orderHeader}>
-              <Text style={styles.orderService}>{item.service}</Text>
-              <StatusBadge status={item.status} />
+              <Text style={styles.orderService}>{item.nama_layanan || item.service}</Text>
+              <StatusBadge status={item.status_pesanan || item.status} isActive={true} />
             </View>
 
             <View style={styles.orderMetaRow}>
-              <Text style={styles.orderMeta}>🗓 {item.date}</Text>
-              {item.shift && <Text style={styles.orderMeta}>⏰ {item.shift}</Text>}
-              {item.weight && (
-                <Text style={styles.orderMeta}>⚖️ {item.weight} kg</Text>
+              <Text style={styles.orderMeta}>{item.tanggal_pesanan || item.date}</Text>
+              {item.shift && <Text style={styles.orderMeta}>{item.shift}</Text>}
+              {item.berat_kg && (
+                <Text style={styles.orderMeta}>{item.berat_kg} kg</Text>
               )}
             </View>
 
             <View style={styles.divider} />
 
-            <Timeline status={item.status} />
+            <Timeline status={item.status_pesanan || item.status} />
 
-            {item.status === 'menunggu_pembayaran' && item.metode_pembayaran === 'qris' && (
+            {(item.status_pesanan || item.status) === 'menunggu pembayaran' && (
               <TouchableOpacity
                 style={styles.payBtn}
                 onPress={() =>
                   (navigation as any).navigate('QrisPayment', {
-                    bookingId: item.id,
+                    bookingId: item.id_pemesanan || item.id,
                     total: item.total,
-                    serviceName: item.service,
-                    bookingDate: item.date,
+                    serviceName: item.nama_layanan || item.service,
+                    bookingDate: item.tanggal_pesanan || item.date,
                   })
                 }
                 activeOpacity={0.85}
@@ -264,18 +269,18 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
   },
   timelineDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   timelineLine: {
     width: 2,
     flex: 1,
-    minHeight: 20,
+    minHeight: 16,
   },
   timelineLabel: {
     ...Typography.body,
-    paddingTop: -2,
+    paddingTop: 0,
   },
   payBtn: {
     marginTop: Spacing.lg,

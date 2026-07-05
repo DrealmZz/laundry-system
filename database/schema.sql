@@ -4,6 +4,10 @@
 -- ============================================================
 
 -- Hapus tabel lama jika ada (urutan penting karena ada foreign key)
+DROP TABLE IF EXISTS notifikasi CASCADE;
+DROP TABLE IF EXISTS shift_karyawan CASCADE;
+DROP TABLE IF EXISTS shifts CASCADE;
+DROP TABLE IF EXISTS booking_mesin CASCADE;
 DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS transaksi CASCADE;
 DROP TABLE IF EXISTS pemesanan CASCADE;
@@ -93,7 +97,9 @@ CREATE TABLE pemesanan (
     status_pesanan      VARCHAR(30)    NOT NULL DEFAULT 'menunggu konfirmasi'
                         CHECK (status_pesanan IN (
                             'menunggu konfirmasi',
-                            'pesanan ditolak',
+                            'disetujui',
+                            'penjemputan',
+                            'penimbangan',
                             'menunggu pembayaran',
                             'sudah dibayar',
                             'diproses',
@@ -101,7 +107,10 @@ CREATE TABLE pemesanan (
                             'sedang di keringkan',
                             'sedang di setrika',
                             'pencucian selesai',
-                            'selesai'
+                            'pengiriman',
+                            'selesai',
+                            'pesanan ditolak',
+                            'pesanan dibatalkan'
                         )),
     berat_kg            NUMERIC(5,2),
     jenis_pencucian     VARCHAR(20)    NOT NULL
@@ -140,6 +149,44 @@ CREATE TABLE audit_log (
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+-- ── BOOKING MESIN (Junction Table) ─────────────────────────
+CREATE TABLE booking_mesin (
+    id_booking_mesin  SERIAL PRIMARY KEY,
+    id_pemesanan      INTEGER NOT NULL REFERENCES pemesanan(id_pemesanan) ON DELETE CASCADE,
+    id_mesin          INTEGER NOT NULL REFERENCES mesin_cuci(id_mesin),
+    UNIQUE(id_pemesanan, id_mesin)
+);
+
+-- ── SHIFTS ─────────────────────────────────────────────────
+CREATE TABLE shifts (
+    id_shift      SERIAL PRIMARY KEY,
+    nama_shift    VARCHAR(20) NOT NULL
+                  CHECK (nama_shift IN ('pagi', 'siang', 'sore', 'malam')),
+    tanggal       DATE NOT NULL,
+    jam_mulai     TIME NOT NULL,
+    jam_selesai   TIME NOT NULL,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── SHIFT KARYAWAN (Junction Table) ────────────────────────
+CREATE TABLE shift_karyawan (
+    id_shift_karyawan  SERIAL PRIMARY KEY,
+    id_shift           INTEGER NOT NULL REFERENCES shifts(id_shift) ON DELETE CASCADE,
+    id_karyawan        INTEGER NOT NULL REFERENCES karyawan(id_karyawan),
+    UNIQUE(id_shift, id_karyawan)
+);
+
+-- ── NOTIFIKASI ─────────────────────────────────────────────
+CREATE TABLE notifikasi (
+    id_notif      SERIAL PRIMARY KEY,
+    id_pemesanan  INTEGER REFERENCES pemesanan(id_pemesanan) ON DELETE SET NULL,
+    id_customer   INTEGER NOT NULL REFERENCES customer(id_customer),
+    judul         VARCHAR(100) NOT NULL,
+    isi_pesan     TEXT NOT NULL,
+    is_read       BOOLEAN DEFAULT FALSE,
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ── INDEXES ─────────────────────────────────────────────────
 CREATE INDEX idx_pemesanan_customer   ON pemesanan(id_customer);
 CREATE INDEX idx_pemesanan_status     ON pemesanan(status_pesanan);
@@ -148,3 +195,14 @@ CREATE INDEX idx_transaksi_customer   ON transaksi(id_customer);
 CREATE INDEX idx_audit_log_customer   ON audit_log(id_customer);
 CREATE INDEX idx_audit_log_karyawan   ON audit_log(id_karyawan);
 CREATE INDEX idx_audit_log_timestamp  ON audit_log(timestamp);
+
+-- Indexes untuk tabel baru
+CREATE INDEX idx_booking_mesin_pemesanan ON booking_mesin(id_pemesanan);
+CREATE INDEX idx_booking_mesin_mesin ON booking_mesin(id_mesin);
+CREATE INDEX idx_shifts_tanggal ON shifts(tanggal);
+CREATE INDEX idx_shifts_nama_shift ON shifts(nama_shift);
+CREATE INDEX idx_shift_karyawan_karyawan ON shift_karyawan(id_karyawan);
+CREATE UNIQUE INDEX idx_shifts_unique ON shifts(tanggal, nama_shift);
+CREATE INDEX idx_notifikasi_customer ON notifikasi(id_customer, is_read);
+CREATE INDEX idx_notifikasi_pemesanan ON notifikasi(id_pemesanan);
+CREATE INDEX idx_notifikasi_created_at ON notifikasi(created_at);
