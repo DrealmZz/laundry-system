@@ -4,7 +4,8 @@ export async function apiRequest(
   endpoint: string,
   options: RequestInit = {}
 ) {
-  const token = localStorage.getItem('token');
+  const authRole = localStorage.getItem('lw_auth_role');
+  const token = authRole ? localStorage.getItem(`lw_token_${authRole}`) : null;
   
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -16,7 +17,8 @@ export async function apiRequest(
   });
 
   if (response.status === 401) {
-    localStorage.removeItem('token');
+    if (authRole) localStorage.removeItem(`lw_token_${authRole}`);
+    localStorage.removeItem('lw_auth_role');
     localStorage.removeItem('lw_user');
     window.location.reload();
     throw new Error('Unauthorized');

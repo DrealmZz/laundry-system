@@ -117,7 +117,10 @@ CREATE TABLE pemesanan (
                         CHECK (jenis_pencucian IN ('kiloan', 'koin')),
     metode_pengambilan  VARCHAR(20)    NOT NULL
                         CHECK (metode_pengambilan IN ('ambil_sendiri', 'pengiriman')),
-    catatan             TEXT
+    catatan             TEXT,
+    tanggal_pengiriman  DATE,
+    shift_pengiriman    VARCHAR(20)
+                        CHECK (shift_pengiriman IN ('pagi', 'siang', 'sore', 'malam'))
 );
 
 -- ── TRANSAKSI ───────────────────────────────────────────────

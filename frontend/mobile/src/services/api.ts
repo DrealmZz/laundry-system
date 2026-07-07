@@ -159,6 +159,25 @@ export const api = {
         })
       : request(`/pemesanan/${id}`),
 
+  cancelBooking: (id: number, catatan: string) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve(null), 400))
+      : request(`/pemesanan/${id}/cancel`, {
+          method: 'PATCH',
+          body: JSON.stringify({ catatan }),
+        }),
+
+  setDeliverySchedule: (id: number, tanggal: string, shift: string) =>
+    request(`/pemesanan/${id}/set-delivery`, {
+      method: 'PATCH',
+      body: JSON.stringify({ tanggal_pengiriman: tanggal, shift_pengiriman: shift }),
+    }),
+
+  confirmReceived: (id: number) =>
+    request(`/pemesanan/${id}/confirm-received`, {
+      method: 'PATCH',
+    }),
+
   // Machines
   getMachines: () =>
     USE_MOCK
@@ -184,6 +203,13 @@ export const api = {
       ? new Promise((resolve) => setTimeout(() => resolve(null), 400))
       : request(`/transaksi/${id}`),
 
+  confirmBookingPayment: (id: number) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve({ status_pesanan: 'sudah dibayar' }), 400))
+      : request(`/pemesanan/${id}/confirm-payment`, {
+          method: 'PATCH',
+        }),
+
   confirmPayment: (id: number, metode_pembayaran: string) =>
     USE_MOCK
       ? new Promise((resolve) => setTimeout(() => resolve({ status_pembayaran: 'lunas' }), 400))
@@ -197,10 +223,11 @@ export const api = {
       ? new Promise((resolve) => setTimeout(() => resolve({
           qris_data: `laundaja:${id}:38500:${Date.now()}`,
           total: 38500,
-          id_transaksi: id,
-          nomor_struk: `STRUK-20260706-${String(id).padStart(4, '0')}`
+          id_pemesanan: id,
+          service: 'Kiloan Reguler',
+          date: new Date().toISOString().split('T')[0],
         }), 400))
-      : request(`/transaksi/${id}/qris`),
+      : request(`/pemesanan/${id}/qris`),
 
   // Notifications
   getNotifications: (page = 1, limit = 20) =>

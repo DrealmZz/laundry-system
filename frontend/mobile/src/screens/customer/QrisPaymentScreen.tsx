@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
   Animated,
+  ScrollView,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../context/AuthContext';
@@ -67,7 +68,7 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
   const confirmPayment = async () => {
     setChecking(true);
     try {
-      await api.confirmPayment(bookingId, 'qris');
+      await api.confirmBookingPayment(bookingId);
       setPaid(true);
     } catch (error: any) {
       Alert.alert('Gagal', error.message || 'Gagal konfirmasi pembayaran');
@@ -111,7 +112,7 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
         <Text style={styles.headerTitle}>Pembayaran QRIS</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContentContainer}>
         <View style={styles.qrisCard}>
           <View style={styles.qrisHeader}>
             <Text style={styles.qrisLabel}>Scan QRIS ini</Text>
@@ -143,7 +144,7 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
           <View style={styles.infoDivider} />
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>ID Pesanan</Text>
-            <Text style={styles.infoValue}>#{paymentData?.id || bookingId || '-'}</Text>
+            <Text style={styles.infoValue}>#{paymentData?.id_pemesanan || paymentData?.id || bookingId || '-'}</Text>
           </View>
           <View style={styles.infoDivider} />
           <View style={styles.infoRow}>
@@ -190,7 +191,7 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
         >
           <Text style={styles.cancelBtnText}>Batalkan Pembayaran</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       {paid && (
         <Animated.View style={styles.successOverlay}>
@@ -245,8 +246,10 @@ const styles = StyleSheet.create({
   },
   backBtnText: { fontSize: 18, color: '#fff' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  content: {
+  scrollContent: {
     flex: 1,
+  },
+  scrollContentContainer: {
     padding: Spacing.xl,
     alignItems: 'center',
     paddingBottom: 40,

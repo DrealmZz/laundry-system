@@ -14,6 +14,7 @@ import { apiRequest } from './services/api';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import CashierDashboard from './components/CashierDashboard';
+import CashierConfirmOrders from './components/CashierConfirmOrders';
 import NewTransaction from './components/NewTransaction';
 import ReceiptPrint from './components/ReceiptPrint';
 import MachinesStatus from './components/MachinesStatus';
@@ -32,20 +33,20 @@ import LoginPage from './components/LoginPage';
 function mapBookingStatus(status: string): Booking['status'] {
   const map: Record<string, Booking['status']> = {
     'menunggu konfirmasi': 'Menunggu',
-    'disetujui': 'Konfirmasi',
-    'penjemputan': 'Konfirmasi',
-    'penimbangan': 'Konfirmasi',
-    'menunggu pembayaran': 'Konfirmasi',
-    'sudah dibayar': 'Konfirmasi',
-    'diproses': 'Konfirmasi',
-    'sedang di cuci': 'Konfirmasi',
-    'sedang di keringkan': 'Konfirmasi',
-    'sedang di setrika': 'Konfirmasi',
-    'pencucian selesai': 'Konfirmasi',
-    'pengiriman': 'Konfirmasi',
-    'selesai': 'Konfirmasi',
+    'disetujui': 'Disetujui',
+    'diproses': 'Diproses',
+    'penjemputan': 'Dijemput',
+    'penimbangan': 'Dijemput',
+    'menunggu pembayaran': 'Diproses',
+    'sudah dibayar': 'Diproses',
+    'sedang di cuci': 'Diproses',
+    'sedang di keringkan': 'Diproses',
+    'sedang di setrika': 'Diproses',
+    'pencucian selesai': 'Diproses',
+    'pengiriman': 'Diproses',
+    'selesai': 'Selesai',
     'pesanan ditolak': 'Tolak',
-    'pesanan dibatalkan': 'Tolak',
+    'pesanan dibatalkan': 'Dibatalkan',
   };
   return map[status] || 'Menunggu';
 }
@@ -53,6 +54,7 @@ function mapBookingStatus(status: string): Booking['status'] {
 function mapBookingFromBackend(b: any): Booking {
   return {
     id: String(b.id_pemesanan ?? ''),
+    id_pemesanan: String(b.id_pemesanan ?? ''),
     customerName: b.customer_nama || 'Customer',
     memberLevel: 'REGULAR',
     layanan: b.nama_layanan || '',
@@ -61,6 +63,10 @@ function mapBookingFromBackend(b: any): Booking {
     lokasiMesin: '',
     status: mapBookingStatus(b.status_pesanan),
     icon: b.jenis_pencucian === 'kiloan' ? '📦' : '🪙',
+    berat_kg: b.berat_kg || null,
+    status_pesanan_raw: b.status_pesanan || '',
+    tanggal_pengiriman: b.tanggal_pengiriman || null,
+    shift_pengiriman: b.shift_pengiriman || null,
   };
 }
 
@@ -125,10 +131,36 @@ function getShiftEndTime(index: number): string {
   return ['16:00', '20:00', '24:00', '04:00'][index] || '16:00';
 }
 
+// ── Path-based Routing ─────────────────────────────────────
+function parsePath(): { role: 'kasir' | 'admin' | 'owner' | null; tab: string } {
+  const m = window.location.pathname.match(/^\/(kasir|admin|owner)(?:\/(\w+))?/);
+  if (m) return { role: m[1] as 'kasir' | 'admin' | 'owner', tab: m[2] || 'dashboard' };
+  if (window.location.pathname === '/login') return { role: null, tab: 'login' };
+  return { role: null, tab: 'dashboard' };
+}
+
+const ROLE_DISPLAY: Record<string, { name: string; title: string }> = {
+  kasir: { name: 'Kasir', title: 'Kasir' },
+  admin: { name: 'Admin', title: 'Admin' },
+  owner: { name: 'Owner', title: 'Owner' },
+};
+
+function createRoleUser(role: 'kasir' | 'admin' | 'owner'): User {
+  const info = ROLE_DISPLAY[role];
+  return {
+    username: `${role}@laundaja.com`,
+    name: info.name,
+    role,
+    title: info.title,
+  };
+}
+
 // ── Main App Component ─────────────────────────────────────
 export default function App() {
-  // Auth state
+  // Auth state — prioritaskan URL path, fallback localStorage
+  const pathInfo = parsePath();
   const [user, setUser] = useState<User | null>(() => {
+    if (pathInfo.role) return createRoleUser(pathInfo.role);
     const saved = localStorage.getItem('lw_user');
     if (saved) {
       try { return JSON.parse(saved); } catch { return null; }
@@ -136,10 +168,14 @@ export default function App() {
     return null;
   });
 
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(() => {
+    const role = localStorage.getItem('lw_auth_role');
+    return role ? localStorage.getItem(`lw_token_${role}`) : null;
+  });
   const role = user?.role || 'kasir';
 
   const [activeTab, setActiveTab] = useState<string>(() => {
+    if (pathInfo.role) return pathInfo.tab;
     return localStorage.getItem('lw_active_tab') || 'dashboard';
   });
 
@@ -154,6 +190,7 @@ export default function App() {
   });
   const [shiftBlocks, setShiftBlocks] = useState<ShiftBlock[]>(initialShiftBlocks);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+  const [authRole, setAuthRole] = useState<string | null>(() => localStorage.getItem('lw_auth_role'));
 
   // ── Sync user & tasks to localStorage ──
   useEffect(() => {
@@ -179,7 +216,7 @@ export default function App() {
       const [bookingsRes, txRes, empRes, svcRes] = await Promise.all([
         apiRequest('/pemesanan').catch(() => null),
         apiRequest('/transaksi').catch(() => null),
-        apiRequest('/users/karyawan').catch(() => null),
+        authRole === 'admin' ? apiRequest('/users/karyawan').catch(() => null) : Promise.resolve(null),
         apiRequest('/services').catch(() => null),
       ]);
 
@@ -202,11 +239,24 @@ export default function App() {
     } catch (err) {
       console.error('Error fetching data:', err);
     }
-  }, [token]);
+  }, [token, authRole]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── Handle browser back/forward ──
+  useEffect(() => {
+    const onPop = () => {
+      const p = parsePath();
+      if (p.role) {
+        setUser(prev => (prev?.role !== p.role ? createRoleUser(p.role) : prev));
+        setActiveTab(p.tab);
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // ── Auth Handlers ──
   const handleLogin = async (identifier: string, password: string) => {
@@ -222,17 +272,20 @@ export default function App() {
       throw new Error('Token tidak ditemukan');
     }
 
-    localStorage.setItem('token', backendToken);
+    const mappedRole: 'kasir' | 'admin' | 'owner' = (() => {
+      const roleMap: Record<string, 'kasir' | 'admin' | 'owner'> = {
+        'kasir': 'kasir',
+        'admin': 'admin',
+        'owner': 'owner',
+      };
+      return roleMap[response.data?.user?.role] || 'kasir';
+    })();
+
+    localStorage.setItem(`lw_token_${mappedRole}`, backendToken);
     setToken(backendToken);
 
-    // Mapping role dari backend ke frontend
-    const roleMap: Record<string, 'kasir' | 'admin' | 'owner'> = {
-      'kasir': 'kasir',
-      'admin': 'admin',
-      'owner': 'owner',
-    };
-
-    const mappedRole = roleMap[backendUser?.role] || 'kasir';
+    localStorage.setItem('lw_auth_role', mappedRole);
+    setAuthRole(mappedRole);
 
     setUser({
       username: backendUser?.email || identifier,
@@ -243,14 +296,18 @@ export default function App() {
 
     setActiveTab('dashboard');
     setSelectedReceiptId(null);
+    window.history.replaceState(null, '', `/${mappedRole}/dashboard`);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    if (authRole) localStorage.removeItem(`lw_token_${authRole}`);
+    localStorage.removeItem('lw_auth_role');
     setToken(null);
+    setAuthRole(null);
     setUser(null);
     setActiveTab('dashboard');
     setSelectedReceiptId(null);
+    window.history.pushState(null, '', '/login');
   };
 
   // ── Task Handlers (localStorage) ──
@@ -304,28 +361,142 @@ export default function App() {
     return newId;
   };
 
+  // ── Local state update helper (for demo without backend) ──
+  const updateLocalBooking = (id: string, updates: Partial<Booking>) => {
+    setBookings(prev => prev.map(b =>
+      (b.id_pemesanan || b.id) === id ? { ...b, ...updates } : b
+    ));
+  };
+
   // ── Booking Handlers ──
   const handleConfirmBooking = async (id: string) => {
+    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+      updateLocalBooking(id, { status_pesanan_raw: 'disetujui', status: 'Disetujui' });
+      alert('Booking berhasil dikonfirmasi!');
+      return;
+    }
     try {
       await apiRequest(`/pemesanan/${id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status: 'diproses' }),
+        body: JSON.stringify({ status_pesanan: 'disetujui' }),
       });
       await fetchData();
-    } catch (error) {
+      alert('Booking berhasil dikonfirmasi!');
+    } catch (error: any) {
       console.error('Error confirming booking:', error);
+      alert(error.message || 'Gagal mengkonfirmasi booking');
     }
   };
 
-  const handleRejectBooking = async (id: string) => {
+  const handleApproveOrder = async (id: string) => {
+    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+      updateLocalBooking(id, { status_pesanan_raw: 'disetujui', status: 'Disetujui' });
+      alert('Pesanan berhasil disetujui oleh kasir.');
+      return;
+    }
+    try {
+      await apiRequest(`/pemesanan/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status_pesanan: 'disetujui' }),
+      });
+      await fetchData();
+      alert('Pesanan berhasil disetujui oleh kasir.');
+    } catch (error: any) {
+      console.error('Error approving order:', error);
+      alert(error.message || 'Gagal menyetujui pesanan');
+    }
+  };
+
+  const handleRejectBooking = async (id: string, reason?: string) => {
+    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+      updateLocalBooking(id, { status_pesanan_raw: 'pesanan ditolak', status: 'Tolak' });
+      alert('Booking berhasil ditolak!');
+      return;
+    }
     try {
       await apiRequest(`/pemesanan/${id}/cancel`, {
         method: 'PATCH',
-        body: JSON.stringify({ catatan: 'Ditolak oleh admin' }),
+        body: JSON.stringify({ catatan: reason || 'Ditolak oleh admin' }),
       });
       await fetchData();
-    } catch (error) {
+      alert('Booking berhasil ditolak!');
+    } catch (error: any) {
       console.error('Error rejecting booking:', error);
+      alert(error.message || 'Gagal menolak booking');
+    }
+  };
+
+  const handleConfirmPickup = async (id: string) => {
+    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+      updateLocalBooking(id, { status_pesanan_raw: 'penjemputan', status: 'Dijemput' });
+      alert('Konfirmasi jemput berhasil!');
+      return;
+    }
+    try {
+      await apiRequest(`/pemesanan/${id}/confirm-pickup`, {
+        method: 'PATCH',
+      });
+      await fetchData();
+      alert('Konfirmasi jemput berhasil!');
+    } catch (error: any) {
+      console.error('Error confirming pickup:', error);
+      alert(error.message || 'Gagal konfirmasi jemput');
+    }
+  };
+
+  const handleConfirmClothes = async (id: string) => {
+    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+      updateLocalBooking(id, { status_pesanan_raw: 'penimbangan', status: 'Dijemput' });
+      alert('Konfirmasi pakaian diterima berhasil!');
+      return;
+    }
+    try {
+      await apiRequest(`/pemesanan/${id}/confirm-clothes`, {
+        method: 'PATCH',
+      });
+      await fetchData();
+      alert('Konfirmasi pakaian diterima berhasil!');
+    } catch (error: any) {
+      console.error('Error confirming clothes:', error);
+      alert(error.message || 'Gagal konfirmasi pakaian');
+    }
+  };
+
+  const handleWeigh = async (id: string, berat_kg: number) => {
+    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+      updateLocalBooking(id, { status_pesanan_raw: 'menunggu pembayaran', status: 'Diproses', berat_kg });
+      alert('Berat berhasil diinput!');
+      return;
+    }
+    try {
+      await apiRequest(`/pemesanan/${id}/weigh`, {
+        method: 'PATCH',
+        body: JSON.stringify({ berat_kg }),
+      });
+      await fetchData();
+      alert('Berat berhasil diinput!');
+    } catch (error: any) {
+      console.error('Error weighing:', error);
+      alert(error.message || 'Gagal input berat');
+    }
+  };
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+      updateLocalBooking(id, { status_pesanan_raw: status, status: mapBookingStatus(status) });
+      alert(`Status berhasil diubah ke '${status}'!`);
+      return;
+    }
+    try {
+      await apiRequest(`/pemesanan/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status_pesanan: status }),
+      });
+      await fetchData();
+      alert(`Status berhasil diubah ke '${status}'!`);
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      alert(error.message || 'Gagal mengubah status');
     }
   };
 
@@ -489,6 +660,8 @@ export default function App() {
               onNavigateToNewTransaction={() => setActiveTab('new-transaction')}
             />
           );
+        case 'confirm-orders':
+          return <CashierConfirmOrders bookings={bookings} onApproveOrder={handleApproveOrder} onConfirmPickup={handleConfirmPickup} onConfirmClothes={handleConfirmClothes} onWeigh={handleWeigh} onUpdateStatus={handleUpdateStatus} />;
         case 'new-transaction':
           return (
             <NewTransaction
@@ -519,6 +692,7 @@ export default function App() {
               bookings={bookings}
               transactions={transactions}
               employees={employees}
+              verifikasiCount={verifikasiCount}
               onConfirmBooking={handleConfirmBooking}
               onRejectBooking={handleRejectBooking}
             />
@@ -529,6 +703,9 @@ export default function App() {
               bookings={bookings}
               onConfirmBooking={handleConfirmBooking}
               onRejectBooking={handleRejectBooking}
+              onConfirmPickup={handleConfirmPickup}
+              onWeigh={handleWeigh}
+              onUpdateStatus={handleUpdateStatus}
             />
           );
         case 'shifts':
@@ -576,8 +753,9 @@ export default function App() {
   };
 
   const pendingBookingsCount = bookings.filter(b => b.status === 'Menunggu').length;
+  const verifikasiCount = bookings.filter(b => b.status_pesanan_raw === 'sudah dibayar').length;
 
-  if (!user) {
+  if (!user && !parsePath().role) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
@@ -586,8 +764,9 @@ export default function App() {
       <Sidebar
         currentRole={role}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => { window.history.pushState(null, '', `/${role}/${tab}`); setActiveTab(tab); }}
         pendingBookingsCount={pendingBookingsCount}
+        verifikasiCount={verifikasiCount}
         user={user}
         onLogout={handleLogout}
       />

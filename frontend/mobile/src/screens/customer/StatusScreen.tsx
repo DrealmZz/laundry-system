@@ -8,6 +8,8 @@ import {
   RefreshControl,
   TouchableOpacity,
   Pressable,
+  Alert,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -16,6 +18,7 @@ import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../consta
 import StatusBadge from '../../components/StatusBadge';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
+import CalendarModal from '../../components/CalendarModal';
 
 const STATUS_ORDER = [
   'menunggu konfirmasi',
@@ -89,6 +92,12 @@ export default function StatusScreen() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [scheduleModalVisible, setScheduleModalVisible] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleShift, setScheduleShift] = useState<string | null>(null);
+  const [calendarVisible, setCalendarVisible] = useState(false);
 
   const fetchBookings = async () => {
     try {
@@ -111,6 +120,77 @@ export default function StatusScreen() {
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  const handleCancel = async (bookingId: number) => {
+    Alert.alert(
+      'Batalkan Pesanan',
+      'Apakah Anda yakin ingin membatalkan pesanan ini?',
+      [
+        { text: 'Tidak', style: 'cancel' },
+        {
+          text: 'Ya, Batalkan',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setCancellingId(bookingId);
+              await api.cancelBooking(bookingId, 'Dibatalkan oleh customer');
+              Alert.alert('Berhasil', 'Pesanan berhasil dibatalkan');
+              fetchBookings();
+            } catch (error: any) {
+              Alert.alert('Gagal', error.message || 'Gagal membatalkan pesanan');
+            } finally {
+              setCancellingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSetSchedule = async () => {
+    if (!selectedBooking || !scheduleDate || !scheduleShift) {
+      Alert.alert('Error', 'Pilih tanggal dan shift pengiriman.');
+      return;
+    }
+
+    try {
+      await api.setDeliverySchedule(
+        selectedBooking.id_pemesanan || selectedBooking.id,
+        scheduleDate,
+        scheduleShift
+      );
+      Alert.alert('Berhasil', 'Jadwal pengiriman berhasil disimpan.');
+      setScheduleModalVisible(false);
+      setSelectedBooking(null);
+      setScheduleDate('');
+      setScheduleShift(null);
+      fetchBookings();
+    } catch (error: any) {
+      Alert.alert('Gagal', error.message || 'Gagal menyimpan jadwal');
+    }
+  };
+
+  const handleConfirmReceived = async (bookingId: number) => {
+    Alert.alert(
+      'Konfirmasi Penerimaan',
+      'Apakah Anda sudah menerima pesanan ini?',
+      [
+        { text: 'Belum', style: 'cancel' },
+        {
+          text: 'Ya, Sudah Diterima',
+          onPress: async () => {
+            try {
+              await api.confirmReceived(bookingId);
+              Alert.alert('Berhasil', 'Pesanan berhasil dikonfirmasi diterima.');
+              fetchBookings();
+            } catch (error: any) {
+              Alert.alert('Gagal', error.message || 'Gagal konfirmasi');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -168,19 +248,96 @@ export default function StatusScreen() {
             <Timeline status={item.status_pesanan || item.status} />
 
             {(item.status_pesanan || item.status) === 'menunggu pembayaran' && (
+              <>
+                {item.berat_kg && (
+                  <View style={styles.infoBox}>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Berat:</Text>
+                      <Text style={styles.infoValue}>{item.berat_kg} kg</Text>
+                    </View>
+                    {item.harga && (
+                      <>
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoLabel}>Harga/kg:</Text>
+                          <Text style={styles.infoValue}>Rp {parseFloat(item.harga).toLocaleString('id-ID')}</Text>
+                        </View>
+                        <View style={[styles.infoRow, styles.infoTotal]}>
+                          <Text style={styles.infoTotalLabel}>Total:</Text>
+                          <Text style={styles.infoTotalValue}>
+                            Rp {(parseFloat(item.harga) * parseFloat(item.berat_kg)).toLocaleString('id-ID')}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.payBtn}
+                  onPress={() =>
+                    (navigation as any).navigate('QrisPayment', {
+                      bookingId: item.id_pemesanan || item.id,
+                      total: item.total || (parseFloat(item.harga) * parseFloat(item.berat_kg)),
+                      serviceName: item.nama_layanan || item.service,
+                      bookingDate: item.tanggal_pesanan || item.date,
+                    })
+                  }
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.payBtnText}>Bayar Sekarang (QRIS)</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {(item.status_pesanan || item.status) === 'pencucian selesai' && 
+             item.metode_pengambilan === 'pengiriman' && (
               <TouchableOpacity
-                style={styles.payBtn}
-                onPress={() =>
-                  (navigation as any).navigate('QrisPayment', {
-                    bookingId: item.id_pemesanan || item.id,
-                    total: item.total,
-                    serviceName: item.nama_layanan || item.service,
-                    bookingDate: item.tanggal_pesanan || item.date,
-                  })
-                }
+                style={styles.scheduleBtn}
+                onPress={() => {
+                  setSelectedBooking(item);
+                  setScheduleModalVisible(true);
+                }}
                 activeOpacity={0.85}
               >
-                <Text style={styles.payBtnText}>Bayar Sekarang (QRIS)</Text>
+                <Text style={styles.scheduleBtnText}>Pilih Jadwal Pengiriman</Text>
+              </TouchableOpacity>
+            )}
+
+            {(item.status_pesanan || item.status) === 'pengiriman' && (
+              <>
+                {item.tanggal_pengiriman && (
+                  <View style={styles.deliveryInfoBox}>
+                    <Text style={styles.deliveryInfoTitle}>Jadwal Pengiriman</Text>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Tanggal:</Text>
+                      <Text style={styles.infoValue}>{item.tanggal_pengiriman}</Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Shift:</Text>
+                      <Text style={[styles.infoValue, {textTransform: 'capitalize'}]}>{item.shift_pengiriman}</Text>
+                    </View>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.confirmBtn}
+                  onPress={() => handleConfirmReceived(item.id_pemesanan || item.id)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.confirmBtnText}>Sudah Diterima</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {((item.status_pesanan || item.status) === 'menunggu konfirmasi' || 
+              (item.status_pesanan || item.status) === 'disetujui') && (
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => handleCancel(item.id_pemesanan || item.id)}
+                disabled={cancellingId === (item.id_pemesanan || item.id)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.cancelBtnText}>
+                  {cancellingId === (item.id_pemesanan || item.id) ? 'Membatalkan...' : 'Batalkan Pesanan'}
+                </Text>
               </TouchableOpacity>
             )}
           </Card>
@@ -194,6 +351,81 @@ export default function StatusScreen() {
           />
         }
       />
+
+      {/* Schedule Modal */}
+      <Modal
+        visible={scheduleModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setScheduleModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Pilih Jadwal Pengiriman</Text>
+            
+            <Text style={styles.fieldLabel}>Tanggal Pengiriman</Text>
+            <TouchableOpacity
+              style={styles.datePickerBtn}
+              onPress={() => setCalendarVisible(true)}
+            >
+              <Text style={[styles.datePickerText, !scheduleDate && styles.datePickerPlaceholder]}>
+                {scheduleDate || 'Pilih tanggal'}
+              </Text>
+            </TouchableOpacity>
+
+            <CalendarModal
+              visible={calendarVisible}
+              selected={scheduleDate}
+              onSelect={setScheduleDate}
+              onClose={() => setCalendarVisible(false)}
+              minDate={new Date()}
+            />
+
+            <Text style={styles.fieldLabel}>Shift Pengiriman</Text>
+            <View style={styles.shiftRow}>
+              {['pagi', 'siang', 'sore', 'malam'].map((s) => (
+                <TouchableOpacity
+                  key={s}
+                  style={[
+                    styles.shiftBtn,
+                    scheduleShift === s && styles.shiftBtnActive,
+                  ]}
+                  onPress={() => setScheduleShift(s)}
+                >
+                  <Text
+                    style={[
+                      styles.shiftBtnText,
+                      scheduleShift === s && styles.shiftBtnTextActive,
+                    ]}
+                  >
+                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setScheduleModalVisible(false);
+                  setSelectedBooking(null);
+                  setScheduleDate('');
+                  setScheduleShift(null);
+                }}
+              >
+                <Text style={styles.modalCancelBtnText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={handleSetSchedule}
+              >
+                <Text style={styles.modalConfirmBtnText}>Simpan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -292,4 +524,195 @@ const styles = StyleSheet.create({
     ...Shadows.md,
   },
   payBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  cancelBtn: {
+    marginTop: Spacing.sm,
+    height: 40,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.error,
+  },
+  infoBox: {
+    backgroundColor: Colors.secondary + '10',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
+  infoValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  infoTotal: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border + '30',
+    paddingTop: 6,
+    marginTop: 4,
+  },
+  infoTotalLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  infoTotalValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  deliveryInfoBox: {
+    backgroundColor: '#05966910',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginTop: Spacing.sm,
+    borderWidth: 1,
+    borderColor: '#05966930',
+  },
+  deliveryInfoTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#059669',
+    marginBottom: Spacing.sm,
+  },
+  scheduleBtn: {
+    marginTop: Spacing.sm,
+    height: 44,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scheduleBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  confirmBtn: {
+    marginTop: Spacing.sm,
+    height: 44,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '85%',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: Spacing.lg,
+    textAlign: 'center',
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textMuted,
+    marginBottom: Spacing.sm,
+  },
+  datePickerBtn: {
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border + '35',
+    backgroundColor: '#FAF7F2',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  datePickerText: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  datePickerPlaceholder: {
+    color: Colors.textMuted,
+  },
+  shiftRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
+  },
+  shiftBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border + '35',
+    backgroundColor: '#FAF7F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shiftBtnActive: {
+    backgroundColor: Colors.secondary,
+    borderColor: Colors.secondary,
+  },
+  shiftBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  shiftBtnTextActive: {
+    color: '#fff',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border + '35',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
 });

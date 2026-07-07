@@ -51,7 +51,7 @@ app.use(express.json());
 // Rate limiting (global) — login endpoint akan punya limiter sendiri
 app.use('/api/', rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 100,
+  max: 1000,
   message: { status: 'error', message: 'Terlalu banyak request, coba lagi dalam 15 menit.' },
 }));
 

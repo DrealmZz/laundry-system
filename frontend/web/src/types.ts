@@ -15,14 +15,19 @@ export interface Transaction {
 
 export interface Booking {
   id: string;
+  id_pemesanan?: string;
   customerName: string;
   memberLevel: 'PLATINUM MEMBER' | 'GOLD MEMBER' | 'REGULAR';
   layanan: string;
   tanggal: string;
   shift: string;
   lokasiMesin: string;
-  status: 'Menunggu' | 'Konfirmasi' | 'Tolak';
+  status: 'Menunggu' | 'Disetujui' | 'Diproses' | 'Dijemput' | 'Selesai' | 'Tolak' | 'Dibatalkan';
   icon: string;
+  berat_kg?: number | null;
+  status_pesanan_raw?: string;
+  tanggal_pengiriman?: string | null;
+  shift_pengiriman?: string | null;
 }
 
 export interface Employee {

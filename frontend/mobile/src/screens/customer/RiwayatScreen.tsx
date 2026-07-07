@@ -30,8 +30,13 @@ export default function RiwayatScreen() {
 
   const fetchHistory = async () => {
     try {
-      const data: any = await api.getBookings(token!);
-      setHistory(data.filter((b: any) => b.status === 'selesai'));
+      const data: any = await api.getBookings();
+      const items = data.items || data;
+      setHistory(items.filter((b: any) => 
+        b.status_pesanan === 'selesai' || 
+        b.status_pesanan === 'pesanan ditolak' ||
+        b.status_pesanan === 'pesanan dibatalkan'
+      ));
     } catch {
       // silent
     } finally {
@@ -103,7 +108,7 @@ export default function RiwayatScreen() {
 
       <FlatList
         data={sorted}
-        keyExtractor={(i) => String(i.id)}
+        keyExtractor={(i) => String(i.id_pemesanan || i.id)}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -119,24 +124,27 @@ export default function RiwayatScreen() {
             <View style={styles.txLeft}>
               <View style={styles.txIconBox}>
                 <Text style={styles.txIcon}>
-                  {item.service?.toLowerCase().includes('koin') ? '🪙' : '👕'}
+                  {(item.nama_layanan || item.service)?.toLowerCase().includes('koin') ? '🪙' : '👕'}
                 </Text>
               </View>
               <View style={styles.txInfo}>
-                <Text style={styles.txService}>{item.service}</Text>
+                <Text style={styles.txService}>{item.nama_layanan || item.service}</Text>
                 <Text style={styles.txDate}>
-                  🗓 {item.date} {item.shift ? `• ${item.shift}` : ''}
+                  {item.tanggal_pesanan || item.date} {item.shift ? `• ${item.shift}` : ''}
                 </Text>
-                {item.weight && (
-                  <Text style={styles.txWeight}>⚖️ {item.weight} kg</Text>
+                {(item.berat_kg || item.weight) && (
+                  <Text style={styles.txWeight}>{item.berat_kg || item.weight} kg</Text>
+                )}
+                {item.catatan && (
+                  <Text style={styles.txNote}>Alasan: {item.catatan}</Text>
                 )}
               </View>
             </View>
             <View style={styles.txRight}>
               <Text style={styles.txTotal}>
-                Rp {item.total?.toLocaleString('id-ID')}
+                Rp {(item.total || 0).toLocaleString('id-ID')}
               </Text>
-              <StatusBadge status={item.status} />
+              <StatusBadge status={item.status_pesanan || item.status} />
             </View>
           </Card>
         )}
@@ -243,6 +251,12 @@ const styles = StyleSheet.create({
     ...Typography.small,
     color: Colors.textMuted,
     marginTop: 1,
+  },
+  txNote: {
+    ...Typography.small,
+    color: Colors.error,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   txRight: {
     alignItems: 'flex-end',

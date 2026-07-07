@@ -93,6 +93,22 @@ class PemesananRepository {
     return rows[0];
   }
 
+  async updateWeight(id, berat_kg) {
+    const { rows } = await db.query(
+      'UPDATE pemesanan SET berat_kg = $1 WHERE id_pemesanan = $2 RETURNING *',
+      [berat_kg, id]
+    );
+    return rows[0];
+  }
+
+  async updateDeliverySchedule(id, { tanggal_pengiriman, shift_pengiriman }) {
+    const { rows } = await db.query(
+      'UPDATE pemesanan SET tanggal_pengiriman = $1, shift_pengiriman = $2 WHERE id_pemesanan = $3 RETURNING *',
+      [tanggal_pengiriman, shift_pengiriman, id]
+    );
+    return rows[0];
+  }
+
   async findByStatuses(statuses) {
     const { rows } = await db.query(
       `SELECT p.*, l.nama_layanan, c.nama_lengkap AS customer_nama

@@ -31,6 +31,7 @@ interface AdminPanelProps {
   bookings: Booking[];
   transactions: Transaction[];
   employees: Employee[];
+  verifikasiCount?: number;
   onConfirmBooking: (id: string) => void;
   onRejectBooking: (id: string) => void;
 }
@@ -39,6 +40,7 @@ export default function AdminPanel({
   bookings,
   transactions,
   employees,
+  verifikasiCount = 0,
   onConfirmBooking,
   onRejectBooking
 }: AdminPanelProps) {
@@ -75,7 +77,7 @@ export default function AdminPanel({
       </div>
 
       {/* Admin Stats cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
         
         {/* Card 1: Total Pendapatan */}
         <div className="p-5 rounded-2xl shadow-lg flex items-center justify-between relative overflow-hidden group transition-all duration-300 hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)' }}>
@@ -122,7 +124,24 @@ export default function AdminPanel({
           </div>
         </div>
 
-        {/* Card 4: Karyawan Shift */}
+        {/* Card 4: Verifikasi Pembayaran */}
+        {verifikasiCount > 0 && (
+          <div className="p-5 rounded-2xl shadow-lg flex items-center justify-between relative overflow-hidden group transition-all duration-300 hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' }}>
+            <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/5 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
+            <div className="space-y-1 z-10">
+              <p className="text-[10px] font-black text-amber-100 uppercase tracking-widest font-mono">Verifikasi Pembayaran</p>
+              <h3 className="text-xl font-black text-white tracking-tight">{verifikasiCount} Menunggu</h3>
+              <span className="text-[10px] text-white font-extrabold bg-white/25 px-2.5 py-0.5 rounded-full inline-block mt-1.5 backdrop-blur-md animate-pulse">
+                Verifikasi segera
+              </span>
+            </div>
+            <div className="bg-white/20 text-white p-3 rounded-2xl border border-white/10 z-10 backdrop-blur-md">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+          </div>
+        )}
+
+        {/* Card 5: Karyawan Shift */}
         <div className="p-5 rounded-2xl shadow-lg flex items-center justify-between relative overflow-hidden group transition-all duration-300 hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)' }}>
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/5 rounded-full blur-xl group-hover:scale-125 transition-transform duration-500" />
           <div className="space-y-1 z-10">
@@ -278,14 +297,14 @@ export default function AdminPanel({
                 {/* Confirm/Reject Actions */}
                 <div className="flex gap-2 shrink-0 md:self-center">
                   <button
-                    onClick={() => onRejectBooking(booking.id)}
+                    onClick={() => onRejectBooking(booking.id_pemesanan || booking.id)}
                     className="flex items-center justify-center gap-1.5 px-3 py-2 border border-error/20 hover:bg-error/5 text-error rounded-xl text-xs font-semibold transition-all"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Tolak</span>
                   </button>
                   <button
-                    onClick={() => onConfirmBooking(booking.id)}
+                    onClick={() => onConfirmBooking(booking.id_pemesanan || booking.id)}
                     className="flex items-center justify-center gap-1.5 px-4 py-2 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
                     style={{ background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)' }}
                   >

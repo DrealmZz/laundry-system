@@ -17,6 +17,7 @@ import {
   X,
   AlertTriangle,
   UserCircle,
+  CheckCircle2,
 } from 'lucide-react';
 import LaundajaLogo from './LaundajaLogo';
 import { User } from '../types';
@@ -26,6 +27,7 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   pendingBookingsCount: number;
+  verifikasiCount?: number;
   user: User;
   onLogout: () => void;
 }
@@ -49,11 +51,12 @@ const roleColors: Record<string, string> = {
   owner: 'bg-gold',
 };
 
-export default function Sidebar({ currentRole, activeTab, onTabChange, pendingBookingsCount, user, onLogout }: SidebarProps) {
+export default function Sidebar({ currentRole, activeTab, onTabChange, pendingBookingsCount, verifikasiCount = 0, user, onLogout }: SidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const cashierMenus: MenuItem[] = [
     { id: 'dashboard', label: 'Beranda', icon: LayoutDashboard },
+    { id: 'confirm-orders', label: 'Konfirmasi', icon: CheckCircle2 },
     { id: 'new-transaction', label: 'Transaksi Baru', icon: PlusCircle },
     { id: 'transactions', label: 'Daftar Transaksi', icon: ReceiptText },
     { id: 'rekap', label: 'Rekap Harian', icon: FileSpreadsheet },
@@ -160,6 +163,11 @@ export default function Sidebar({ currentRole, activeTab, onTabChange, pendingBo
                           isActive ? 'bg-teal text-white' : 'bg-error text-white'
                         }`}>
                           {menu.badge}
+                        </span>
+                      )}
+                      {menu.id === 'bookings' && verifikasiCount > 0 && (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-400 text-amber-900 ml-1">
+                          {verifikasiCount}
                         </span>
                       )}
                     </button>

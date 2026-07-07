@@ -80,24 +80,24 @@ exports.getPemesananById = async (req, res, next) => {
 
 exports.updateStatus = async (req, res, next) => {
   try {
-    const { status } = req.body;
+    const { status_pesanan } = req.body;
 
-    if (!status) {
+    if (!status_pesanan) {
       return res.status(400).json({
         status: 'error',
-        message: 'Status wajib diisi.',
+        message: 'status_pesanan wajib diisi.',
       });
     }
 
     const pemesanan = await pemesananService.updateStatus(
       parseInt(req.params.id),
-      status,
+      status_pesanan,
       req.user.role
     );
 
     res.status(200).json({
       status: 'success',
-      message: `Status pemesanan berhasil diubah ke '${status}'.`,
+      message: `Status pemesanan berhasil diubah ke '${status_pesanan}'.`,
       data: pemesanan,
     });
   } catch (err) {
@@ -119,12 +119,151 @@ exports.cancelPemesanan = async (req, res, next) => {
     const pemesanan = await pemesananService.cancelPemesanan(
       parseInt(req.params.id),
       catatan,
-      req.user.role
+      req.user.role,
+      req.user.id
     );
 
     res.status(200).json({
       status: 'success',
       message: 'Pemesanan berhasil dibatalkan.',
+      data: pemesanan,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.confirmPickup = async (req, res, next) => {
+  try {
+    const pemesanan = await pemesananService.confirmPickup(
+      parseInt(req.params.id),
+      req.user.role
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Konfirmasi jemput berhasil.',
+      data: pemesanan,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.confirmClothesReceived = async (req, res, next) => {
+  try {
+    const pemesanan = await pemesananService.confirmClothesReceived(
+      parseInt(req.params.id),
+      req.user.role
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Konfirmasi pakaian diterima berhasil.',
+      data: pemesanan,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.weighAndNotify = async (req, res, next) => {
+  try {
+    const { berat_kg } = req.body;
+
+    if (!berat_kg || berat_kg <= 0) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'berat_kg harus lebih dari 0.',
+      });
+    }
+
+    const pemesanan = await pemesananService.weighAndNotify(
+      parseInt(req.params.id),
+      parseFloat(berat_kg),
+      req.user.role
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Berat berhasil diinput dan notifikasi terkirim.',
+      data: pemesanan,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.generateQR = async (req, res, next) => {
+  try {
+    const qrData = await pemesananService.generateQR(
+      parseInt(req.params.id),
+      req.user.id
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: qrData,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.confirmPayment = async (req, res, next) => {
+  try {
+    const pemesanan = await pemesananService.confirmPayment(
+      parseInt(req.params.id),
+      req.user.id
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Konfirmasi pembayaran berhasil.',
+      data: pemesanan,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.setDeliverySchedule = async (req, res, next) => {
+  try {
+    const { tanggal_pengiriman, shift_pengiriman } = req.body;
+
+    if (!tanggal_pengiriman || !shift_pengiriman) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'tanggal_pengiriman dan shift_pengiriman wajib diisi.',
+      });
+    }
+
+    const pemesanan = await pemesananService.setDeliverySchedule(
+      parseInt(req.params.id),
+      { tanggal_pengiriman, shift_pengiriman },
+      req.user.id
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Jadwal pengiriman berhasil disimpan.',
+      data: pemesanan,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.confirmReceived = async (req, res, next) => {
+  try {
+    const pemesanan = await pemesananService.confirmReceived(
+      parseInt(req.params.id),
+      req.user.id
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Pesanan berhasil dikonfirmasi diterima.',
       data: pemesanan,
     });
   } catch (err) {

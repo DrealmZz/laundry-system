@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import StatusBadge from '../../components/StatusBadge';
+import { api } from '../../services/api';
 
 const STATUS_ORDER = [
   'menunggu konfirmasi',
@@ -67,6 +69,33 @@ export default function TrackingScreen({ route, navigation }: any) {
   const { item } = route.params!;
   const currentStatus = item.status_pesanan || item.status;
   const currentIdx = STATUS_ORDER.indexOf(currentStatus);
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancel = async () => {
+    Alert.alert(
+      'Batalkan Pesanan',
+      'Apakah Anda yakin ingin membatalkan pesanan ini?',
+      [
+        { text: 'Tidak', style: 'cancel' },
+        {
+          text: 'Ya, Batalkan',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setCancelling(true);
+              await api.cancelBooking(item.id_pemesanan || item.id, 'Dibatalkan oleh customer');
+              Alert.alert('Berhasil', 'Pesanan berhasil dibatalkan');
+              navigation.goBack();
+            } catch (error: any) {
+              Alert.alert('Gagal', error.message || 'Gagal membatalkan pesanan');
+            } finally {
+              setCancelling(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -185,6 +214,19 @@ export default function TrackingScreen({ route, navigation }: any) {
             <Text style={styles.payBtnText}>Bayar Sekarang (QRIS)</Text>
           </TouchableOpacity>
         )}
+
+        {(currentStatus === 'menunggu konfirmasi' || currentStatus === 'disetujui') && (
+          <TouchableOpacity
+            style={styles.cancelBtn}
+            onPress={handleCancel}
+            disabled={cancelling}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.cancelBtnText}>
+              {cancelling ? 'Membatalkan...' : 'Batalkan Pesanan'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -300,4 +342,18 @@ const styles = StyleSheet.create({
     ...Shadows.md,
   },
   payBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  cancelBtn: {
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.errorLight,
+    borderWidth: 1,
+    borderColor: Colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.error,
+  },
 });
