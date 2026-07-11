@@ -6,10 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Modal,
 } from 'react-native';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import StatusBadge from '../../components/StatusBadge';
+import CalendarModal from '../../components/CalendarModal';
 import { api } from '../../services/api';
+import { formatCurrency } from '../../utils/format';
+
+const SHIFTS = [
+  { value: 'pagi',   label: 'Pagi',   time: '08.00 - 12.00' },
+  { value: 'siang',  label: 'Siang',  time: '12.00 - 16.00' },
+  { value: 'sore',   label: 'Sore',   time: '16.00 - 20.00' },
+  { value: 'malam',  label: 'Malam',  time: '20.00 - 23.00' },
+];
 
 const STATUS_ORDER = [
   'menunggu konfirmasi',
@@ -65,11 +75,81 @@ const STATUS_DESCRIPTIONS: Record<string, string> = {
   'selesai': 'Pesanan sudah selesai dan sudah diterima',
 };
 
+const KOIN_STATUS_ORDER = [
+  'menunggu konfirmasi',
+  'disetujui',
+  'menunggu pembayaran',
+  'sudah dibayar',
+  'selesai',
+];
+
+const KOIN_STATUS_LABELS: Record<string, string> = {
+  'menunggu konfirmasi': 'Menunggu Konfirmasi',
+  'disetujui': 'Disetujui',
+  'menunggu pembayaran': 'Menunggu Bayar',
+  'sudah dibayar': 'Sudah Dibayar',
+  'selesai': 'Selesai',
+};
+
+const KOIN_STATUS_DESCRIPTIONS: Record<string, string> = {
+  'menunggu konfirmasi': 'Pesanan kamu sedang menunggu konfirmasi dari tim kami',
+  'disetujui': 'Tim kami sudah menyetujui pesanan kamu. Silakan datang ke outlet untuk pembayaran',
+  'menunggu pembayaran': 'Silakan lakukan pembayaran di outlet',
+  'sudah dibayar': 'Pembayaran berhasil. Kamu bisa menggunakan mesin cuci',
+  'selesai': 'Pemesanan selesai',
+};
+
 export default function TrackingScreen({ route, navigation }: any) {
-  const { item } = route.params!;
+  const item = route.params?.item;
+  if (!item) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <Text style={{ fontSize: 16, color: '#666' }}>Data pesanan tidak ditemukan</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 16 }}>
+          <Text style={{ color: '#5B4ECC' }}>Kembali</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
   const currentStatus = item.status_pesanan || item.status;
-  const currentIdx = STATUS_ORDER.indexOf(currentStatus);
+  const isKoin = item.jenis_pencucian === 'koin';
+  const statusOrder = isKoin ? KOIN_STATUS_ORDER : STATUS_ORDER;
+  const statusLabels = isKoin ? KOIN_STATUS_LABELS : STATUS_LABELS;
+  const statusDescs = isKoin ? KOIN_STATUS_DESCRIPTIONS : STATUS_DESCRIPTIONS;
+  const currentIdx = statusOrder.indexOf(currentStatus);
   const [cancelling, setCancelling] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedShift, setSelectedShift] = useState<string | null>(null);
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [alamatConfirmed, setAlamatConfirmed] = useState(false);
+  const alamat = item.customer_alamat || item.alamat || item.address || '';
+
+  const handleSetDelivery = async () => {
+    if (!selectedDate) {
+      Alert.alert('Lengkapi Data', 'Pilih tanggal pengiriman');
+      return;
+    }
+    if (!selectedShift) {
+      Alert.alert('Lengkapi Data', 'Pilih shift pengiriman');
+      return;
+    }
+    if (!alamatConfirmed) {
+      Alert.alert('Konfirmasi Alamat', 'Centang konfirmasi alamat terlebih dahulu');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.setDeliverySchedule(item.id_pemesanan || item.id, selectedDate, selectedShift);
+      Alert.alert('Berhasil', 'Jadwal pengiriman berhasil disimpan');
+      setShowDeliveryModal(false);
+    } catch (error: any) {
+      Alert.alert('Gagal', error.message || 'Gagal menyimpan jadwal');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleCancel = async () => {
     Alert.alert(
@@ -125,7 +205,7 @@ export default function TrackingScreen({ route, navigation }: any) {
           <View style={styles.divider} />
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Tanggal</Text>
-            <Text style={styles.infoValue}>{item.tanggal_pesanan || item.date}</Text>
+            <Text style={styles.infoValue}>{item.tanggal_pesanan || item.date || '-'}</Text>
           </View>
           {item.shift ? (
             <>
@@ -159,7 +239,7 @@ export default function TrackingScreen({ route, navigation }: any) {
               <View style={styles.divider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Total</Text>
-                <Text style={styles.infoValueBold}>Rp{(item.total || 0).toLocaleString('id-ID')}</Text>
+                <Text style={styles.infoValueBold}>{formatCurrency(item.total || 0)}</Text>
               </View>
             </>
           ) : null}
@@ -168,12 +248,12 @@ export default function TrackingScreen({ route, navigation }: any) {
         <View style={styles.timelineCard}>
           <Text style={styles.timelineTitle}>Status Pesanan</Text>
           <View style={styles.timeline}>
-            {STATUS_ORDER.map((s, i) => {
+            {statusOrder.map((s, i) => {
               const isActive = i <= currentIdx;
-              const label = STATUS_LABELS[s] || s;
-              const desc = STATUS_DESCRIPTIONS[s] || '';
+              const label = statusLabels[s] || s;
+              const desc = statusDescs[s] || '';
               const color = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
-              const isLast = i === STATUS_ORDER.length - 1;
+              const isLast = i === statusOrder.length - 1;
               const isCurrent = i === currentIdx;
 
               return (
@@ -198,7 +278,7 @@ export default function TrackingScreen({ route, navigation }: any) {
           </View>
         </View>
 
-        {currentStatus === 'menunggu pembayaran' && (
+        {currentStatus === 'menunggu pembayaran' && !isKoin && (
           <TouchableOpacity
             style={styles.payBtn}
             onPress={() =>
@@ -227,7 +307,118 @@ export default function TrackingScreen({ route, navigation }: any) {
             </Text>
           </TouchableOpacity>
         )}
+
+        {currentStatus === 'pencucian selesai' && !isKoin && item.metode_pengambilan === 'pengiriman' && (
+          <TouchableOpacity
+            style={styles.deliveryBtn}
+            onPress={() => setShowDeliveryModal(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.deliveryBtnText}>Atur Jadwal Pengiriman</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+
+      <Modal
+        visible={showDeliveryModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDeliveryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Atur Jadwal Pengiriman</Text>
+
+            <View style={styles.addressWarningBox}>
+              <Text style={styles.addressWarningIcon}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.addressWarningTitle}>Periksa Alamat Tujuan</Text>
+                <Text style={styles.addressText}>
+                  {alamat || 'Alamat tidak tersedia'}
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.alamatCheckbox}
+              onPress={() => setAlamatConfirmed(!alamatConfirmed)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, alamatConfirmed && styles.checkboxActive]}>
+                {alamatConfirmed && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <Text style={styles.alamatCheckboxLabel}>
+                Saya sudah memastikan alamat di atas sudah benar
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.fieldLabel}>Tanggal Pengiriman</Text>
+            <TouchableOpacity
+              style={styles.datePickerBtn}
+              onPress={() => setCalendarVisible(true)}
+            >
+              <Text style={[styles.datePickerText, !selectedDate && styles.datePickerPlaceholder]}>
+                {selectedDate || 'Pilih tanggal'}
+              </Text>
+            </TouchableOpacity>
+
+            <CalendarModal
+              visible={calendarVisible}
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              onClose={() => setCalendarVisible(false)}
+              minDate={new Date()}
+            />
+
+            <Text style={styles.fieldLabel}>Shift (Waktu Pengiriman)</Text>
+            <View style={styles.shiftRow}>
+              {SHIFTS.map((s) => {
+                const isActive = selectedShift === s.value;
+                return (
+                  <TouchableOpacity
+                    key={s.value}
+                    style={[styles.shiftBtn, isActive && styles.shiftBtnActive]}
+                    onPress={() => setSelectedShift(s.value)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.shiftBtnText, isActive && styles.shiftBtnTextActive]}>
+                      {s.label}
+                    </Text>
+                    <Text style={[styles.shiftTimeText, isActive && styles.shiftTimeTextActive]}>
+                      {s.time}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => {
+                  setShowDeliveryModal(false);
+                  setSelectedDate('');
+                  setSelectedShift(null);
+                  setAlamatConfirmed(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.modalCancelBtnText}>Batal</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirmBtn, submitting && styles.modalConfirmBtnDisabled]}
+                onPress={handleSetDelivery}
+                disabled={submitting}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.modalConfirmBtnText}>
+                  {submitting ? 'Menyimpan...' : 'Simpan Jadwal'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -355,5 +546,177 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.error,
+  },
+  deliveryBtn: {
+    height: 52,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.md,
+  },
+  deliveryBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.xxl,
+  },
+  modalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xxl,
+    padding: Spacing.xl,
+    maxHeight: '90%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
+  addressWarningBox: {
+    flexDirection: 'row',
+    backgroundColor: Colors.warningLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  addressWarningIcon: { fontSize: 18 },
+  addressWarningTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.warning,
+    marginBottom: 4,
+  },
+  addressText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    lineHeight: 16,
+  },
+  alamatCheckbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: Colors.success,
+    borderColor: Colors.success,
+  },
+  checkmark: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  alamatCheckboxLabel: {
+    flex: 1,
+    fontSize: 12,
+    color: Colors.text,
+    lineHeight: 16,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  datePickerBtn: {
+    height: 44,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: Spacing.lg,
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  datePickerText: {
+    fontSize: 14,
+    color: Colors.text,
+  },
+  datePickerPlaceholder: {
+    color: Colors.textMuted,
+  },
+  shiftRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  shiftBtn: {
+    flex: 1,
+    minWidth: '45%',
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+  },
+  shiftBtnActive: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primary,
+  },
+  shiftBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  shiftBtnTextActive: {
+    color: Colors.primaryDark,
+  },
+  shiftTimeText: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+  },
+  shiftTimeTextActive: {
+    color: Colors.primaryDark,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.sm,
+  },
+  modalCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.sm,
+  },
+  modalConfirmBtnDisabled: {
+    opacity: 0.6,
+  },
+  modalConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

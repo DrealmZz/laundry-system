@@ -7,11 +7,13 @@ interface ConfirmBookingsProps {
   onConfirmBooking: (id: string) => void;
   onRejectBooking: (id: string, reason: string) => void;
   onConfirmPickup: (id: string) => void;
+  onConfirmClothes?: (id: string) => void;
   onWeigh: (id: string, berat_kg: number) => void;
   onUpdateStatus: (id: string, status: string) => void;
+  userRole?: string;
 }
 
-const TABS = ['Menunggu', 'Disetujui', 'Dijemput', 'Menunggu Bayar', 'Diproses', 'Dikirim', 'Selesai', 'Tolak', 'Dibatalkan'] as const;
+const TABS = ['Menunggu', 'Disetujui', 'Dijemput', 'Verifikasi', 'Menunggu Bayar', 'Diproses', 'Dikirim', 'Selesai', 'Tolak', 'Dibatalkan'] as const;
 type TabType = typeof TABS[number];
 
 export default function ConfirmBookings({
@@ -19,8 +21,10 @@ export default function ConfirmBookings({
   onConfirmBooking,
   onRejectBooking,
   onConfirmPickup,
+  onConfirmClothes,
   onWeigh,
-  onUpdateStatus
+  onUpdateStatus,
+  userRole
 }: ConfirmBookingsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('Menunggu');
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
@@ -36,6 +40,7 @@ export default function ConfirmBookings({
       case 'Menunggu': return raw === 'menunggu konfirmasi';
       case 'Disetujui': return raw === 'disetujui';
       case 'Dijemput': return raw === 'penjemputan' || raw === 'penimbangan';
+      case 'Verifikasi': return raw === 'menunggu verifikasi pembayaran';
       case 'Menunggu Bayar': return raw === 'menunggu pembayaran';
       case 'Diproses': return ['sudah dibayar', 'diproses', 'sedang di cuci', 'sedang di keringkan', 'sedang di setrika', 'pencucian selesai'].includes(raw);
       case 'Dikirim': return raw === 'pengiriman';
@@ -53,6 +58,7 @@ export default function ConfirmBookings({
         case 'Menunggu': return raw === 'menunggu konfirmasi';
         case 'Disetujui': return raw === 'disetujui';
         case 'Dijemput': return raw === 'penjemputan' || raw === 'penimbangan';
+        case 'Verifikasi': return raw === 'menunggu verifikasi pembayaran';
         case 'Menunggu Bayar': return raw === 'menunggu pembayaran';
         case 'Diproses': return ['sudah dibayar', 'diproses', 'sedang di cuci', 'sedang di keringkan', 'sedang di setrika', 'pencucian selesai'].includes(raw);
         case 'Dikirim': return raw === 'pengiriman';
@@ -105,20 +111,35 @@ export default function ConfirmBookings({
     setWeighValue('');
   };
 
-  const getDiprosesAction = (booking: Booking) => {
+  const getDiprosesAction = (booking: Booking, userRole?: string) => {
     const raw = booking.status_pesanan_raw || '';
     const id = booking.id_pemesanan || booking.id;
 
-    if (raw === 'sudah dibayar') {
+    if (raw === 'sudah dibayar' && userRole === 'admin') {
       return (
         <div className="flex gap-2 w-full">
           <button
             onClick={() => onUpdateStatus(id, 'diproses')}
             className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
-            style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }}
+            style={{ background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)' }}
           >
             <Check className="w-3.5 h-3.5" />
             <span>Verifikasi Pembayaran</span>
+          </button>
+        </div>
+      );
+    }
+
+    if (raw === 'diproses') {
+      return (
+        <div className="flex gap-2 w-full">
+          <button
+            onClick={() => onUpdateStatus(id, 'sedang di cuci')}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
+            style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>Mulai Cuci</span>
           </button>
         </div>
       );
@@ -260,18 +281,26 @@ export default function ConfirmBookings({
                       </div>
                     )}
 
-                    {activeTab === 'Diproses' && (
+                  {activeTab === 'Verifikasi' && (
+                    <div className="flex gap-2 border-t border-white/20 pt-3">
+                      <button
+                        onClick={() => onUpdateStatus(id, 'sudah dibayar')}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
+                        style={{ background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)' }}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Verifikasi Pembayaran</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {activeTab === 'Diproses' && (
                       <div className={`rounded-lg p-2 text-[10px] font-bold ${
                         raw === 'sudah dibayar'
-                          ? 'bg-amber-50 border border-amber-100 text-amber-700'
+                          ? 'bg-teal-50 border border-teal-100 text-teal-700'
                           : 'bg-blue-50 border border-blue-100 text-blue-700'
                       }`}>
                         Status: {getDiprosesStatusLabel(raw)}
-                        {raw === 'sudah dibayar' && (
-                          <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-200 text-amber-800 text-[8px] font-bold">
-                            MENUNGGU VERIFIKASI
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
@@ -306,37 +335,56 @@ export default function ConfirmBookings({
                         <X className="w-3.5 h-3.5" />
                         <span>Tolak</span>
                       </button>
-                      <button
-                        onClick={() => onConfirmPickup(id)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
-                        style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }}
-                      >
-                        <Truck className="w-3.5 h-3.5" />
-                        <span>Konfirmasi Jemput</span>
-                      </button>
+                      {userRole !== 'admin' && (
+                        <button
+                          onClick={() => onConfirmPickup(id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
+                          style={{ background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }}
+                        >
+                          <Truck className="w-3.5 h-3.5" />
+                          <span>Konfirmasi Jemput</span>
+                        </button>
+                      )}
                     </div>
                   )}
 
                   {activeTab === 'Dijemput' && raw === 'penjemputan' && (
                     <div className="flex gap-2 border-t border-white/20 pt-3">
-                      <button
-                        onClick={() => handleWeighClick(id)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
-                        style={{ background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' }}
-                      >
-                        <Weight className="w-3.5 h-3.5" />
-                        <span>Pakaian Sampai - Input Berat</span>
-                      </button>
+                      {userRole !== 'admin' && (
+                        <button
+                          onClick={() => onConfirmClothes?.(id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
+                          style={{ background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' }}
+                        >
+                          <Package className="w-3.5 h-3.5" />
+                          <span>Konfirmasi Pakaian Sampai</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'Dijemput' && raw === 'penimbangan' && (
+                    <div className="flex gap-2 border-t border-white/20 pt-3">
+                      {userRole !== 'admin' && (
+                        <button
+                          onClick={() => handleWeighClick(id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 text-white rounded-xl text-xs font-bold shadow-sm transition-all duration-200"
+                          style={{ background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' }}
+                        >
+                          <Weight className="w-3.5 h-3.5" />
+                          <span>Input Berat</span>
+                        </button>
+                      )}
                     </div>
                   )}
 
                   {activeTab === 'Diproses' && (
                     <div className="flex gap-2 border-t border-white/20 pt-3">
-                      {getDiprosesAction(booking)}
+                      {getDiprosesAction(booking, userRole)}
                     </div>
                   )}
 
-                  {(activeTab === 'Menunggu Bayar' || activeTab === 'Dikirim' || activeTab === 'Selesai' || activeTab === 'Tolak' || activeTab === 'Dibatalkan' || (activeTab === 'Dijemput' && raw === 'penimbangan')) && (
+                  {(activeTab === 'Verifikasi' || activeTab === 'Menunggu Bayar' || activeTab === 'Dikirim' || activeTab === 'Selesai' || activeTab === 'Tolak' || activeTab === 'Dibatalkan' || (activeTab === 'Dijemput' && raw === 'penimbangan')) && (
                     <div className="border-t border-white/20 pt-2 flex justify-end items-center text-[10px] font-bold">
                       <span className={`px-2 py-0.5 rounded ${
                         activeTab === 'Selesai'
@@ -347,7 +395,7 @@ export default function ConfirmBookings({
                           ? 'bg-error/10 text-error border border-error/15'
                           : 'bg-gray-100 text-gray-500 border border-gray-200'
                       }`}>
-                        {activeTab === 'Menunggu Bayar' ? 'MENUNGGU BAYAR' : activeTab === 'Dikirim' ? 'DIKIRIM' : activeTab === 'Selesai' ? 'SELESAI' : activeTab === 'Tolak' ? 'DITOLAK' : activeTab === 'Dibatalkan' ? 'DIBATALKAN' : 'SUDAH DITIMBANG'}
+                        {activeTab === 'Verifikasi' ? 'MENUNGGU VERIFIKASI' : activeTab === 'Menunggu Bayar' ? 'MENUNGGU BAYAR' : activeTab === 'Dikirim' ? 'DIKIRIM' : activeTab === 'Selesai' ? 'SELESAI' : activeTab === 'Tolak' ? 'DITOLAK' : activeTab === 'Dibatalkan' ? 'DIBATALKAN' : 'SUDAH DITIMBANG'}
                       </span>
                     </div>
                   )}
@@ -358,10 +406,10 @@ export default function ConfirmBookings({
         )}
       </div>
 
-      {/* Reject Dialog */}
-      {rejectDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+        {/* Reject Dialog */}
+        {rejectDialogOpen && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 mx-4" style={{ width: '450px', maxWidth: 'calc(100vw - 2rem)' }}>
             <h3 className="text-lg font-bold text-ink mb-4">Alasan Penolakan</h3>
             <textarea
               value={rejectReason}
@@ -388,10 +436,10 @@ export default function ConfirmBookings({
         </div>
       )}
 
-      {/* Weigh Dialog */}
-      {weighDialogOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4">
+        {/* Weigh Dialog */}
+        {weighDialogOpen && userRole !== 'admin' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 mx-4" style={{ width: '450px', maxWidth: 'calc(100vw - 2rem)' }}>
             <h3 className="text-lg font-bold text-ink mb-2">Input Berat Pakaian</h3>
             <p className="text-xs text-ink-muted mb-4">Masukkan berat pakaian yang sudah diterima dari kurir.</p>
             <div className="relative">

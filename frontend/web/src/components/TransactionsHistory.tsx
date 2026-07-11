@@ -5,16 +5,19 @@ import { Search, Printer, Calendar, ReceiptText, ArrowUpDown } from 'lucide-reac
 interface TransactionsHistoryProps {
   transactions: Transaction[];
   onSelectReceipt: (id: string) => void;
+  loading?: boolean;
 }
 
 type SortField = 'date' | 'amount' | 'customer';
 type SortDir = 'asc' | 'desc';
 
-export default function TransactionsHistory({ transactions, onSelectReceipt }: TransactionsHistoryProps) {
+export default function TransactionsHistory({ transactions, onSelectReceipt, loading = false }: TransactionsHistoryProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Selesai' | 'Proses' | 'Antri'>('All');
   const [sortField, setSortField] = useState<SortField>('date');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const filteredTransactions = useMemo(() => {
     const search = searchTerm.toLowerCase().trim();
@@ -25,7 +28,23 @@ export default function TransactionsHistory({ transactions, onSelectReceipt }: T
           t.id.toLowerCase().includes(search) ||
           t.serviceName.toLowerCase().includes(search);
         const matchesStatus = statusFilter === 'All' || t.status === statusFilter;
-        return matchesSearch && matchesStatus;
+
+        let matchesDate = true;
+        if (startDate || endDate) {
+          const parseDate = (dateStr: string) => {
+            const [day, month, year] = dateStr.split(' ');
+            const monthMap: Record<string, number> = {
+              'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'Mei': 4, 'Jun': 5,
+              'Jul': 6, 'Agu': 7, 'Sep': 8, 'Okt': 9, 'Nov': 10, 'Des': 11
+            };
+            return new Date(parseInt(year), monthMap[month], parseInt(day));
+          };
+          const txDate = parseDate(t.date);
+          if (startDate) matchesDate = matchesDate && txDate >= new Date(startDate + 'T00:00:00');
+          if (endDate) matchesDate = matchesDate && txDate <= new Date(endDate + 'T23:59:59');
+        }
+
+        return matchesSearch && matchesStatus && matchesDate;
       })
       .sort((a, b) => {
         const dir = sortDir === 'asc' ? 1 : -1;
@@ -45,7 +64,7 @@ export default function TransactionsHistory({ transactions, onSelectReceipt }: T
         }
         return 0;
       });
-  }, [transactions, searchTerm, statusFilter, sortField, sortDir]);
+  }, [transactions, searchTerm, statusFilter, sortField, sortDir, startDate, endDate]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -61,6 +80,14 @@ export default function TransactionsHistory({ transactions, onSelectReceipt }: T
     Proses: 'Diproses',
     Antri: 'Menunggu',
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-4 border-teal/30 border-t-teal rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -96,6 +123,23 @@ export default function TransactionsHistory({ transactions, onSelectReceipt }: T
               <option value="Proses">Diproses</option>
               <option value="Antri">Menunggu</option>
             </select>
+
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              aria-label="Tanggal mulai"
+              className="glass-input rounded-[var(--radius-md)] text-xs px-3 py-2 text-ink-secondary font-semibold focus:outline-none"
+              placeholder="Dari"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              aria-label="Tanggal akhir"
+              className="glass-input rounded-[var(--radius-md)] text-xs px-3 py-2 text-ink-secondary font-semibold focus:outline-none"
+              placeholder="Sampai"
+            />
 
             <span className="text-[11px] text-ink-muted font-mono">
               {filteredTransactions.length} transaksi
@@ -141,14 +185,14 @@ export default function TransactionsHistory({ transactions, onSelectReceipt }: T
                       </div>
                       <div>
                         <p className="font-bold text-ink-secondary text-sm">
-                          {searchTerm || statusFilter !== 'All' ? 'Tidak ada transaksi ditemukan' : 'Belum ada transaksi'}
+                          {searchTerm || statusFilter !== 'All' || startDate || endDate ? 'Tidak ada transaksi ditemukan' : 'Belum ada transaksi'}
                         </p>
                         <p className="text-ink-muted text-xs mt-1">
                           {searchTerm || statusFilter !== 'All' ? 'Coba ubah kata kunci atau filter pencarian' : 'Transaksi baru akan muncul di sini'}
                         </p>
                       </div>
-                      {(searchTerm || statusFilter !== 'All') && (
-                        <button onClick={() => { setSearchTerm(''); setStatusFilter('All'); }} className="text-xs font-bold text-teal hover:text-teal-light transition-colors">
+                      {(searchTerm || statusFilter !== 'All' || startDate || endDate) && (
+                        <button onClick={() => { setSearchTerm(''); setStatusFilter('All'); setStartDate(''); setEndDate(''); }} className="text-xs font-bold text-teal hover:text-teal-light transition-colors">
                           Reset filter
                         </button>
                       )}

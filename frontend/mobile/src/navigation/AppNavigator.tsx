@@ -7,6 +7,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { Colors, Spacing, BorderRadius, Shadows } from '../constants/theme';
 import LoadingScreen from '../components/LoadingScreen';
+import Icon from '../components/Icon';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
@@ -21,6 +22,10 @@ import RiwayatScreen from '../screens/customer/RiwayatScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
 import QrisPaymentScreen from '../screens/customer/QrisPaymentScreen';
 import TrackingScreen from '../screens/customer/TrackingScreen';
+import HelpScreen from '../screens/customer/HelpScreen';
+import NotificationScreen from '../screens/customer/NotificationScreen';
+import TermsScreen from '../screens/customer/TermsScreen';
+import EditProfileScreen from '../screens/customer/EditProfileScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -32,19 +37,17 @@ type TabIcon = {
 };
 
 const TAB_ICONS: Record<string, string> = {
-  Beranda: '🏠',
-  Layanan: '👕',
-  Status: '🔍',
-  Riwayat: '📋',
-  Profil: '👤',
+  Beranda: 'house',
+  Layanan: 'shop',
+  Status: 'search',
+  Riwayat: 'card-list',
+  Profil: 'person',
 };
 
 function TabIcon({ routeName, focused }: { routeName: string; focused: boolean }) {
   return (
     <View style={[tabStyles.iconContainer, focused && tabStyles.iconContainerActive]}>
-      <Text style={[tabStyles.icon, focused && tabStyles.iconActive]}>
-        {TAB_ICONS[routeName]}
-      </Text>
+      <Icon name={TAB_ICONS[routeName]} size={20} color={focused ? Colors.primary : Colors.textMuted} />
     </View>
   );
 }
@@ -122,6 +125,26 @@ export default function AppNavigator() {
             <Stack.Screen
               name="Tracking"
               component={TrackingScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Help"
+              component={HelpScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Terms"
+              component={TermsScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Notification"
+              component={NotificationScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
               options={{ headerShown: false }}
             />
           </>

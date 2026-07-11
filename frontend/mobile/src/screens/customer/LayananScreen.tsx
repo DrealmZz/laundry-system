@@ -8,10 +8,13 @@ import {
   RefreshControl,
   Image,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
+import Icon from '../../components/Icon';
+import { formatCurrency } from '../../utils/format';
 
 const MACHINES = [
   { id: '1', label: 'Mesin Cuci 1', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
@@ -22,10 +25,11 @@ const MACHINES = [
   { id: '6', label: 'Mesin Cuci 6', kapasitas: 'Max 8 kg', status: 'Tersedia' as const },
 ];
 
-const KILO_LAYANAN = [
-  { id: 'reguler', label: 'Layanan Reguler', estimasi: '2–3 hari', priceLabel: 'Rp 5.000/kg' },
-  { id: 'express', label: 'Layanan Express', estimasi: '6 jam', priceLabel: 'Rp 9.000/kg' },
-];
+function formatEstimasi(menit: number) {
+  if (menit >= 1440) return `${Math.round(menit / 1440)} hari`;
+  if (menit >= 60) return `${Math.round(menit / 60)} jam`;
+  return `${menit} menit`;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   Tersedia: '#166534',
@@ -71,23 +75,21 @@ function MachineStatusCard({ machine }: { machine: typeof MACHINES[0] }) {
 function KiloServiceCard({
   title,
   description,
-  onPress,
+  services,
+  onSelectService,
 }: {
   title: string;
   description: string;
-  onPress: () => void;
+  services: any[];
+  onSelectService: (service: any) => void;
 }) {
   return (
-    <TouchableOpacity
-      style={styles.serviceCard}
-      onPress={onPress}
-      activeOpacity={0.95}
-    >
+    <View style={styles.serviceCard}>
       <View style={styles.accentBar} />
       <View style={styles.cardBody}>
         <View style={styles.cardHeader}>
           <View style={styles.cardIconBox}>
-            <Text style={styles.cardIcon}>🧺</Text>
+            <Icon name="basket" size={32} color={Colors.primary} />
           </View>
           <View style={styles.cardTitleWrap}>
             <Text style={styles.cardTitle}>{title}</Text>
@@ -97,44 +99,52 @@ function KiloServiceCard({
 
         <View style={styles.divider} />
 
-        <Text style={styles.subLabel}>Jenis Layanan</Text>
+        <Text style={styles.subLabel}>Pilih Jenis Layanan</Text>
         <View style={styles.layananBox}>
-          {KILO_LAYANAN.map((l, i) => (
-            <View
-              key={l.id}
-              style={[styles.layananRow, i < KILO_LAYANAN.length - 1 && styles.layananRowBorder]}
+          {services.map((s, i) => (
+            <TouchableOpacity
+              key={s.id_layanan}
+              style={[styles.layananRow, i < services.length - 1 && styles.layananRowBorder]}
+              onPress={() => onSelectService(s)}
+              activeOpacity={0.7}
             >
               <View style={styles.checkCircle}>
                 <Text style={styles.checkMark}>✓</Text>
               </View>
               <View style={styles.layananInfo}>
-                <Text style={styles.layananName}>{l.label}</Text>
-                <Text style={styles.layananMeta}>
-                  {l.estimasi} · {l.priceLabel}
-                </Text>
+                 <Text style={styles.layananName}>{s.nama_layanan}</Text>
+                 <Text style={styles.layananMeta}>
+                   {formatEstimasi(s.estimasi_waktu)} · {formatCurrency(s.harga)}/kg
+                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       </View>
 
       <View style={styles.cardBtnContainer}>
-        <TouchableOpacity style={styles.cardBtn} onPress={onPress} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={styles.cardBtn}
+          onPress={() => services.length > 0 && onSelectService(services[0])}
+          activeOpacity={0.85}
+        >
           <Text style={styles.cardBtnText}>Pilih Layanan</Text>
           <Text style={styles.cardBtnArrow}>›</Text>
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
 function KoinServiceCard({
   title,
   description,
+  services,
   onPress,
 }: {
   title: string;
   description: string;
+  services: any[];
   onPress: () => void;
 }) {
   const available = MACHINES.filter((m) => m.status === 'Tersedia').length;
@@ -149,7 +159,7 @@ function KoinServiceCard({
       <View style={styles.cardBody}>
         <View style={styles.cardHeader}>
           <View style={[styles.cardIconBox, { backgroundColor: Colors.secondary + '10' }]}>
-            <Text style={styles.cardIcon}>🫧</Text>
+            <Icon name="coin" size={32} color={Colors.secondary} />
           </View>
           <View style={styles.cardTitleWrap}>
             <View style={styles.titleRow}>
@@ -163,6 +173,26 @@ function KoinServiceCard({
         </View>
 
         <View style={styles.divider} />
+
+        <Text style={styles.subLabel}>Harga Layanan</Text>
+        <View style={styles.layananBox}>
+          {services.map((s: any, i: number) => (
+            <View
+              key={s.id_layanan}
+              style={[styles.layananRow, i < services.length - 1 && styles.layananRowBorder]}
+            >
+              <View style={styles.checkCircle}>
+                <Text style={styles.checkMark}>✓</Text>
+              </View>
+               <View style={styles.layananInfo}>
+                 <Text style={styles.layananName}>{s.nama_layanan}</Text>
+                 <Text style={styles.layananMeta}>
+                   {formatEstimasi(s.estimasi_waktu)} · {formatCurrency(s.harga)}
+                 </Text>
+               </View>
+            </View>
+          ))}
+        </View>
 
         <Text style={styles.subLabel}>Status Mesin</Text>
         <View style={styles.layananBox}>
@@ -194,6 +224,13 @@ export default function LayananScreen({ navigation }: any) {
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const kiloanServices = services.filter(
+    (s: any) => s.jenis_layanan === 'kiloan'
+  );
+  const koinServices = services.filter(
+    (s: any) => s.jenis_layanan === 'koin'
+  );
 
   const fetchServices = async () => {
     try {
@@ -232,11 +269,14 @@ export default function LayananScreen({ navigation }: any) {
     >
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Image
-            source={require('../../../assets/logo_laundry.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
+          <View style={styles.headerLeft}>
+            <Image
+              source={require('../../../assets/logo-laund-transparant.png')}
+              style={styles.logoIcon}
+              resizeMode="contain"
+            />
+            <Text style={styles.logoText}>laundaja</Text>
+          </View>
           <View style={styles.headerChip}>
             <Text style={styles.headerChipText}>Layanan Laundry</Text>
           </View>
@@ -249,16 +289,27 @@ export default function LayananScreen({ navigation }: any) {
       </View>
 
       <View style={styles.cardList}>
-        <KiloServiceCard
-          title="Laundry Kiloan"
-          description="Layanan laundry berdasarkan berat pakaian."
-          onPress={() => navigation.navigate('Booking', { service: { name: 'Laundry Kiloan' } })}
-        />
-        <KoinServiceCard
-          title="Laundry Koin"
-          description="Layanan laundry mandiri menggunakan mesin."
-          onPress={() => navigation.navigate('BookingKoin')}
-        />
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Memuat layanan...</Text>
+          </View>
+        ) : (
+          <>
+            <KiloServiceCard
+              title="Laundry Kiloan"
+              description="Layanan laundry berdasarkan berat pakaian."
+              services={kiloanServices}
+              onSelectService={(service) => navigation.navigate('Booking', { services: kiloanServices, preselected: service })}
+            />
+            <KoinServiceCard
+              title="Laundry Koin"
+              description="Layanan laundry mandiri menggunakan mesin."
+              services={koinServices}
+              onPress={() => navigation.navigate('BookingKoin', { services: koinServices })}
+            />
+          </>
+        )}
       </View>
 
       <View style={{ height: 32 }} />
@@ -281,7 +332,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
-  headerLogo: { width: 108, height: 40, tintColor: '#fff' },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  logoIcon: { width: 28, height: 28, marginRight: 4, tintColor: '#fff' },
+  logoText: {
+    fontSize: 18,
+    fontWeight: '400',
+    color: '#fff',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    letterSpacing: 0.5,
+  },
   headerChip: {
     backgroundColor: 'rgba(255,255,255,0.10)',
     borderRadius: BorderRadius.md,
@@ -417,6 +476,13 @@ const styles = StyleSheet.create({
   },
   cardBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
   cardBtnArrow: { fontSize: 17, color: '#fff', fontWeight: '300' },
+  loadingBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xxl * 2,
+    gap: Spacing.md,
+  },
+  loadingText: { fontSize: 13, color: Colors.textMuted },
 });
 
 

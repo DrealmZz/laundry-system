@@ -3,7 +3,7 @@ const db = require('../../../shared/database/db');
 class ServiceRepository {
   async findAll({ limit, offset } = {}) {
     const { rows } = await db.query(
-      'SELECT id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu FROM layanan ORDER BY id_layanan LIMIT $1 OFFSET $2',
+      'SELECT id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu, status_layanan FROM layanan ORDER BY id_layanan LIMIT $1 OFFSET $2',
       [limit || 50, offset || 0]
     );
     return rows;
@@ -11,7 +11,7 @@ class ServiceRepository {
 
   async findById(id) {
     const { rows } = await db.query(
-      'SELECT id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu FROM layanan WHERE id_layanan = $1',
+      'SELECT id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu, status_layanan FROM layanan WHERE id_layanan = $1',
       [id]
     );
     return rows[0] || null;
@@ -21,18 +21,18 @@ class ServiceRepository {
     const { rows } = await db.query(
       `INSERT INTO layanan (nama_layanan, jenis_layanan, harga, estimasi_waktu)
        VALUES ($1, $2, $3, $4)
-       RETURNING id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu`,
+       RETURNING id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu, status_layanan`,
       [nama_layanan, jenis_layanan, harga, estimasi_waktu]
     );
     return rows[0];
   }
 
-  async update(id, { nama_layanan, jenis_layanan, harga, estimasi_waktu }) {
+  async update(id, { nama_layanan, jenis_layanan, harga, estimasi_waktu, status_layanan }) {
     const { rows } = await db.query(
-      `UPDATE layanan SET nama_layanan = $1, jenis_layanan = $2, harga = $3, estimasi_waktu = $4
-       WHERE id_layanan = $5
-       RETURNING id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu`,
-      [nama_layanan, jenis_layanan, harga, estimasi_waktu, id]
+      `UPDATE layanan SET nama_layanan = $1, jenis_layanan = $2, harga = $3, estimasi_waktu = $4, status_layanan = $5
+       WHERE id_layanan = $6
+       RETURNING id_layanan, nama_layanan, jenis_layanan, harga, estimasi_waktu, status_layanan`,
+      [nama_layanan, jenis_layanan, harga, estimasi_waktu, status_layanan, id]
     );
     return rows[0];
   }

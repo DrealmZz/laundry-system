@@ -1,3 +1,8 @@
+> **Status: FINALIZED**
+> Alur ini sudah selesai dan tidak boleh diubah tanpa diskusi & persetujuan seluruh tim.
+> Penambahan jenis pemesanan baru (misal: satuan, express) harus membuat alur terpisah,
+> tidak memotong atau mengubah alur kiloan yang sudah ada.
+
 # Alur Laundry Kiloan — End to End
 
 ## 1. Ringkasan

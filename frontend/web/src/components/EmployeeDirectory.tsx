@@ -192,7 +192,7 @@ export default function EmployeeDirectory({
       {/* ADD EMPLOYEE MODAL DIALOG */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <form onSubmit={handleSubmit} className="glass-card-elevated w-full max-w-md p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="glass-card-elevated p-6 space-y-4" style={{ width: '450px', maxWidth: 'calc(100vw - 2rem)' }}>
             <div>
               <h3 className="text-base font-black text-ink tracking-tight">Daftarkan Karyawan Baru</h3>
               <p className="text-xs text-ink-muted">Masukkan rincian data karyawan untuk ditambahkan ke database</p>

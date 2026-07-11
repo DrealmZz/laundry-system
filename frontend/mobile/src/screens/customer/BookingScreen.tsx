@@ -16,6 +16,8 @@ import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import CalendarModal from '../../components/CalendarModal';
+import Icon from '../../components/Icon';
+import { formatCurrency } from '../../utils/format';
 
 const SHIFTS = [
   { id: 'pagi', label: 'Pagi', time: '07.00 – 09.00' },
@@ -24,6 +26,11 @@ const SHIFTS = [
   { id: 'malam', label: 'Malam', time: '18.00 – 20.00' },
 ] as const;
 
+function formatEstimasi(menit: number) {
+  if (menit >= 1440) return `${Math.round(menit / 1440)} hari`;
+  if (menit >= 60) return `${Math.round(menit / 60)} jam`;
+  return `${menit} menit`;
+}
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
 
@@ -35,10 +42,11 @@ function formatDisplay(iso: string) {
 
 export default function BookingScreen({ route, navigation }: any) {
   const { token, user } = useAuth();
-  const preselected = route.params?.service;
+  const allServices: any[] = route.params?.services || [];
+  const preselected: any = route.params?.preselected;
 
-  const [jenisLayanan, setJenisLayanan] = useState<'reguler' | 'express' | null>(null);
-  const [alamat, setAlamat] = useState(user?.address || '');
+  const [selectedId, setSelectedId] = useState<number | null>(preselected?.id_layanan || null);
+  const [alamat, setAlamat] = useState(user?.alamat || '');
   const [tanggal, setTanggal] = useState('');
   const [jamShift, setJamShift] = useState<string | null>(null);
   const [catatan, setCatatan] = useState('');
@@ -53,8 +61,10 @@ export default function BookingScreen({ route, navigation }: any) {
 
 
 
+  const selectedService = allServices.find((s: any) => s.id_layanan === selectedId);
+
   const handleSubmit = useCallback(async () => {
-    if (!jenisLayanan) return Alert.alert('Error', 'Pilih jenis layanan terlebih dahulu.');
+    if (!selectedId || !selectedService) return Alert.alert('Error', 'Pilih jenis layanan terlebih dahulu.');
     if (!alamat.trim()) return Alert.alert('Error', 'Alamat domisili wajib diisi.');
     if (!tanggal) return Alert.alert('Error', 'Pilih tanggal pengambilan.');
     if (!jamShift) return Alert.alert('Error', 'Pilih jam pengambilan.');
@@ -62,7 +72,7 @@ export default function BookingScreen({ route, navigation }: any) {
     setLoading(true);
     try {
       await api.createBooking({
-        id_layanan: jenisLayanan === 'reguler' ? 1 : 2, // Kiloan Reguler or Express
+        id_layanan: selectedId,
         tanggal_pesanan: tanggal,
         shift: jamShift,
         jenis_pencucian: 'kiloan',
@@ -75,7 +85,7 @@ export default function BookingScreen({ route, navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, [jenisLayanan, alamat, tanggal, jamShift, catatan]);
+  }, [selectedId, selectedService, alamat, tanggal, jamShift, catatan]);
 
   return (
     <KeyboardAvoidingView
@@ -115,49 +125,53 @@ export default function BookingScreen({ route, navigation }: any) {
 
         <View style={styles.body}>
           <Card>
-            <CardHeader icon="👕" color={Colors.primary} label="Jenis Layanan" required />
-            <View style={styles.layananRow}>
-              {(['reguler', 'express'] as const).map((id) => {
-                const active = jenisLayanan === id;
-                const isExpress = id === 'express';
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={[
-                      styles.layananCard,
-                      {
-                        backgroundColor: active ? (isExpress ? Colors.primary : Colors.secondary) : '#FAF7F2',
-                        borderColor: active ? (isExpress ? Colors.primary : Colors.secondary) : Colors.border + '35',
-                      },
-                      active && styles.layananCardActive,
-                    ]}
-                    onPress={() => setJenisLayanan(id)}
-                    activeOpacity={0.7}
-                  >
-                    <View
+            <CardHeader icon="basket" color={Colors.primary} label="Pilih Jenis Layanan" required />
+            {allServices.length === 0 ? (
+              <Text style={styles.noServicesText}>Data layanan tidak tersedia.</Text>
+            ) : (
+              <View style={styles.layananRow}>
+                {allServices.map((s: any) => {
+                  const active = selectedId === s.id_layanan;
+                  const isExpress = s.nama_layanan.toLowerCase().includes('express');
+                  return (
+                    <TouchableOpacity
+                      key={s.id_layanan}
                       style={[
-                        styles.layananIconBox,
+                        styles.layananCard,
                         {
-                          backgroundColor: active ? 'rgba(255,255,255,0.18)' : (isExpress ? Colors.primary + '12' : Colors.secondary + '12'),
+                          backgroundColor: active ? (isExpress ? Colors.primary : Colors.secondary) : '#FAF7F2',
+                          borderColor: active ? (isExpress ? Colors.primary : Colors.secondary) : Colors.border + '35',
                         },
+                        active && styles.layananCardActive,
                       ]}
+                      onPress={() => setSelectedId(s.id_layanan)}
+                      activeOpacity={0.7}
                     >
-                      <Text style={styles.layananIcon}>{isExpress ? '⚡' : '👕'}</Text>
-                    </View>
-                    <Text style={[styles.layananTitle, { color: active ? '#fff' : Colors.text }]}>
-                      {id === 'reguler' ? 'Reguler' : 'Express'}
-                    </Text>
-                    <Text style={[styles.layananPrice, { color: active ? 'rgba(255,255,255,0.70)' : Colors.textMuted }]}>
-                      {id === 'reguler' ? '2–3 hari · Rp 5k/kg' : '6 jam · Rp 9k/kg'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                      <View
+                        style={[
+                          styles.layananIconBox,
+                          {
+                            backgroundColor: active ? 'rgba(255,255,255,0.18)' : (isExpress ? Colors.primary + '12' : Colors.secondary + '12'),
+                          },
+                        ]}
+                      >
+                        <Icon name={isExpress ? 'lightning-charge' : 'basket'} size={28} color={Colors.primary} />
+                      </View>
+                      <Text style={[styles.layananTitle, { color: active ? '#fff' : Colors.text }]}>
+                        {s.nama_layanan.replace('Kiloan ', '')}
+                      </Text>
+                       <Text style={[styles.layananPrice, { color: active ? 'rgba(255,255,255,0.70)' : Colors.textMuted }]}>
+                         {formatEstimasi(s.estimasi_waktu)} · {formatCurrency(s.harga)}/kg
+                       </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </Card>
 
           <Card>
-            <CardHeader icon="📍" color={Colors.secondary} label="Alamat Domisili" required />
+            <CardHeader icon="geo-alt" color={Colors.secondary} label="Alamat Domisili" required />
             <TextInput
               style={styles.textArea}
               placeholder="Masukkan alamat lengkap (nama jalan, nomor, kelurahan, kecamatan, kota)..."
@@ -171,14 +185,14 @@ export default function BookingScreen({ route, navigation }: any) {
           </Card>
 
           <Card>
-            <CardHeader icon="📅" color={Colors.primary} label="Tanggal Pengambilan" required />
+            <CardHeader icon="calendar" color={Colors.primary} label="Tanggal Pengambilan" required />
             <TouchableOpacity
               style={[styles.datePickerBtn, tanggal ? styles.datePickerBtnFilled : null]}
               onPress={() => setCalendarVisible(true)}
               activeOpacity={0.7}
             >
               <View style={styles.datePickerIconBox}>
-                <Text style={styles.datePickerIcon}>📅</Text>
+                <Icon name="calendar" size={20} color={Colors.textMuted} />
               </View>
               <View style={styles.datePickerInfo}>
                 <Text style={[styles.datePickerLabel, tanggal && styles.datePickerLabelFilled]}>
@@ -202,7 +216,7 @@ export default function BookingScreen({ route, navigation }: any) {
           </Card>
 
           <Card>
-            <CardHeader icon="⏰" color={Colors.secondary} label="Jam Pengambilan" required />
+            <CardHeader icon="clock" color={Colors.secondary} label="Jam Pengambilan" required />
             <View style={styles.shiftList}>
               {SHIFTS.map((shift) => {
                 const active = jamShift === shift.id;
@@ -236,7 +250,7 @@ export default function BookingScreen({ route, navigation }: any) {
           </Card>
 
           <Card>
-            <CardHeader icon="📷" color={Colors.primary} label="Foto Lokasi Penempatan Cucian" required />
+            <CardHeader icon="camera" color={Colors.primary} label="Foto Lokasi Penempatan Cucian" required />
             <Text style={styles.fotoHint}>
               Upload foto lokasi penempatan cucian untuk membantu kurir menemukan barang.
             </Text>
@@ -246,18 +260,18 @@ export default function BookingScreen({ route, navigation }: any) {
               activeOpacity={0.7}
             >
               <View style={styles.fotoUploadOption}>
-                <Text style={styles.fotoUploadIcon}>📷</Text>
+                <Icon name="camera" size={28} color={Colors.textMuted} />
                 <Text style={styles.fotoUploadText}>Kamera</Text>
               </View>
               <View style={[styles.fotoUploadOption, { backgroundColor: Colors.primary + '10', borderColor: Colors.primary + '50' }]}>
-                <Text style={styles.fotoUploadIcon}>🖼️</Text>
+                <Icon name="image" size={28} color={Colors.textMuted} />
                 <Text style={styles.fotoUploadText}>Galeri</Text>
               </View>
             </TouchableOpacity>
           </Card>
 
           <Card>
-            <CardHeader icon="📄" color={Colors.secondary} label="Catatan Tambahan" />
+            <CardHeader icon="file-text" color={Colors.secondary} label="Catatan Tambahan" />
             <TextInput
               style={styles.textArea}
               placeholder="Tambahkan informasi khusus jika diperlukan."
@@ -339,7 +353,7 @@ function CardHeader({
   return (
     <View style={styles.cardHeaderRow}>
       <View style={[styles.cardHeaderIconBox, { backgroundColor: color + '18' }]}>
-        <Text style={styles.cardHeaderIcon}>{icon}</Text>
+        <Icon name={icon} size={20} color={color} />
       </View>
       <Text style={styles.cardHeaderLabel}>
         {label}
@@ -455,6 +469,12 @@ const styles = StyleSheet.create({
   layananIcon: { fontSize: 18 },
   layananTitle: { fontSize: 13, fontWeight: '700' },
   layananPrice: { fontSize: 10, fontWeight: '600', textAlign: 'center' },
+  noServicesText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: Spacing.md,
+  },
   textArea: {
     borderRadius: BorderRadius.lg,
     borderWidth: 1.5,

@@ -27,6 +27,25 @@ exports.createTransaksi = async (req, res, next) => {
   }
 };
 
+exports.createWalkInTransaksi = async (req, res, next) => {
+  try {
+    const { nama_lengkap, no_hp, id_layanan, berat_kg, jenis_pencucian, metode_pengambilan, metode_pembayaran, alamat, password } = req.body;
+
+    const result = await transaksiService.createWalkInTransaksi(
+      { nama_lengkap, no_hp, id_layanan, berat_kg, jenis_pencucian, metode_pengambilan, metode_pembayaran, alamat, password },
+      req.user.id
+    );
+
+    res.status(201).json({
+      status: 'success',
+      message: 'Pesanan walk-in berhasil dibuat.',
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getAllTransaksi = async (req, res, next) => {
   try {
     const limit = parseInt(req.query.limit) || 50;

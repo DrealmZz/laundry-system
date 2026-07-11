@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
+import Icon from '../../components/Icon';
 
 export default function AddressScreen({ navigation }: any) {
   const { user, updateProfile } = useAuth();
@@ -55,7 +56,7 @@ export default function AddressScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.cardIconBox}>
-                <Text style={styles.cardIcon}>📍</Text>
+                <Icon name="geo-alt" size={28} color={Colors.secondary} style={styles.cardIcon} />
               </View>
               <Text style={styles.cardLabel}>Alamat Domisili</Text>
             </View>

@@ -19,15 +19,15 @@ const fiveDaysAgo = new Date(NOW.getTime() - 5 * 86400000).toISOString().split('
 const MOCK: Record<string, unknown> = {
   login: {
     token: 'mock-jwt-token',
-    user: { id: 1, nama_lengkap: 'Budi Santoso', email: 'budi@mail.com', role: 'customer', alamat: 'Jl. Merdeka No. 10, Jakarta' },
+    user: { id: 1, nama_lengkap: 'Budi Santoso', email: 'budi@mail.com', role: 'customer', alamat: 'Jl. Merdeka No. 10, Jakarta', no_hp: '08123456789' },
   },
   register: { message: 'Registrasi berhasil' },
   forgotPassword: { message: 'Tautan reset password telah dikirim ke email' },
   services: [
     { id_layanan: 1, nama_layanan: 'Kiloan Reguler', harga: 7000, jenis_layanan: 'kiloan', estimasi_waktu: 180 },
     { id_layanan: 2, nama_layanan: 'Kiloan Express', harga: 12000, jenis_layanan: 'kiloan', estimasi_waktu: 90 },
-    { id_layanan: 3, nama_layanan: 'Koin Cuci Saja', harga: 8000, jenis_layanan: 'koin', estimasi_waktu: 45 },
-    { id_layanan: 4, nama_layanan: 'Koin Cuci + Kering', harga: 12000, jenis_layanan: 'koin', estimasi_waktu: 60 },
+    { id_layanan: 3, nama_layanan: 'Koin Cuci Saja', harga: 10000, jenis_layanan: 'koin', estimasi_waktu: 45 },
+    { id_layanan: 4, nama_layanan: 'Koin Cuci + Kering', harga: 20000, jenis_layanan: 'koin', estimasi_waktu: 60 },
   ],
   machines: [
     { id_mesin: 1, kode_mesin: 'MC-01', nama_mesin: 'Mesin Cuci 1', tipe_mesin: 'pencucian', status_mesin: 'tersedia', kapasitas_kg: 10 },
@@ -47,6 +47,9 @@ const MOCK: Record<string, unknown> = {
       berat_kg: null,
       shift: 'siang',
       metode_pengambilan: 'ambil_sendiri',
+      customer_nama: 'Budi',
+      customer_no_hp: '08123456789',
+      customer_alamat: 'Jl. Merdeka No. 123, Jakarta',
     },
     {
       id_pemesanan: 3,
@@ -57,6 +60,22 @@ const MOCK: Record<string, unknown> = {
       berat_kg: 4,
       shift: 'sore',
       metode_pengambilan: 'pengiriman',
+      customer_nama: 'Budi',
+      customer_no_hp: '08123456789',
+      customer_alamat: 'Jl. Merdeka No. 123, Jakarta',
+    },
+    {
+      id_pemesanan: 4,
+      nama_layanan: 'Kiloan Reguler',
+      status_pesanan: 'pencucian selesai',
+      tanggal_pesanan: today,
+      total: 35000,
+      berat_kg: 5,
+      shift: 'pagi',
+      metode_pengambilan: 'pengiriman',
+      customer_nama: 'Budi',
+      customer_no_hp: '08123456789',
+      customer_alamat: 'Jl. Merdeka No. 123, Jakarta',
     },
   ],
 };
@@ -113,7 +132,7 @@ export const api = {
   getProfile: () =>
     USE_MOCK
       ? new Promise((resolve) => setTimeout(() => resolve(MOCK.login), 400))
-      : request('/auth/me'),
+      : request('/auth/me').then((data) => data?.user || data),
 
   // Services
   getServices: () =>
@@ -141,6 +160,9 @@ export const api = {
             total: 0,
             berat_kg: (d.berat_kg as number) || null,
             metode_pengambilan: (d.metode_pengambilan as string) || 'ambil_sendiri',
+            customer_nama: 'Budi',
+            customer_no_hp: '08123456789',
+            customer_alamat: 'Jl. Merdeka No. 123, Jakarta',
           };
           bookings.unshift(newBooking);
           setTimeout(() => resolve(newBooking), 800);
@@ -245,5 +267,21 @@ export const api = {
       ? new Promise((resolve) => setTimeout(() => resolve(null), 200))
       : request(`/notifications/${id}/read`, {
           method: 'PATCH',
+        }),
+
+  updateProfile: (data: { nama_lengkap?: string; username?: string; email?: string; no_hp?: string; alamat?: string; currentPassword?: string }) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve(data), 400))
+      : request('/auth/profile', {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        }),
+
+  changePassword: (oldPassword: string, newPassword: string) =>
+    USE_MOCK
+      ? new Promise((resolve) => setTimeout(() => resolve(null), 400))
+      : request('/auth/change-password', {
+          method: 'PATCH',
+          body: JSON.stringify({ oldPassword, newPassword }),
         }),
 };

@@ -92,6 +92,7 @@ class UserService {
 
     if (table === 'customer') {
       await customerRepository.updatePassword(id, hashed);
+      await customerRepository.setPasswordResetRequired(id, true);
     } else if (table === 'karyawan') {
       await karyawanRepository.updatePassword(id, hashed);
     } else if (table === 'owner') {

@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { api } from '../../services/api';
+import Icon from '../../components/Icon';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 
 export default function RegisterScreen({ navigation }: any) {
@@ -77,10 +78,11 @@ export default function RegisterScreen({ navigation }: any) {
             </View>
             <View style={styles.miniLogo}>
               <Image
-                source={require('../../../assets/logo_laundry.png')}
-                style={styles.miniLogoImg}
+                source={require('../../../assets/logo-laund-transparant.png')}
+                style={styles.miniLogoIcon}
                 resizeMode="contain"
               />
+              <Text style={styles.miniLogoText}>laundaja</Text>
             </View>
           </View>
         </View>
@@ -174,9 +176,7 @@ export default function RegisterScreen({ navigation }: any) {
                 secureTextEntry={!showPass}
               />
               <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-                <Text style={styles.eyeIcon}>
-                  {showPass ? '🙈' : '👁️'}
-                </Text>
+                <Icon name={showPass ? 'eye-slash' : 'eye'} size={20} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -193,9 +193,7 @@ export default function RegisterScreen({ navigation }: any) {
                 secureTextEntry={!showConfirm}
               />
               <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-                <Text style={styles.eyeIcon}>
-                  {showConfirm ? '🙈' : '👁️'}
-                </Text>
+                <Icon name={showConfirm ? 'eye-slash' : 'eye'} size={20} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -294,15 +292,20 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Plus Jakarta Sans' : undefined,
   },
   miniLogo: {
-    width: 48,
-    height: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: BorderRadius.md,
     backgroundColor: 'rgba(255,255,255,0.90)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
-  miniLogoImg: { width: 44, height: 26 },
+  miniLogoIcon: { width: 24, height: 24, marginRight: 4, tintColor: '#23395B' },
+  miniLogoText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#23395B',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+  },
   formSection: {
     flex: 1,
     backgroundColor: Colors.background,

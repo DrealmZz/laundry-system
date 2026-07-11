@@ -60,14 +60,18 @@ class CustomerRepository {
     return parseInt(rows[0].count);
   }
 
-  async update(id, { nama_lengkap, no_hp, email, alamat, status_akun }) {
+  async updateAll(id, { nama_lengkap, username, no_hp, email, alamat, status_akun, password_reset_required }) {
     const { rows } = await db.query(
-      `UPDATE customer SET nama_lengkap = $1, no_hp = $2, email = $3, alamat = $4, status_akun = $5
-       WHERE id_customer = $6
-       RETURNING id_customer, nama_lengkap, username, no_hp, email, status_akun, alamat`,
-      [nama_lengkap, no_hp, email, alamat, status_akun, id]
+      `UPDATE customer SET nama_lengkap = $1, username = $2, no_hp = $3, email = $4, alamat = $5, status_akun = $6, password_reset_required = $7
+       WHERE id_customer = $8
+       RETURNING id_customer, nama_lengkap, username, no_hp, email, status_akun, alamat, password_reset_required`,
+      [nama_lengkap, username, no_hp, email, alamat, status_akun, password_reset_required, id]
     );
     return rows[0];
+  }
+
+  async setPasswordResetRequired(id, value) {
+    await db.query('UPDATE customer SET password_reset_required = $1 WHERE id_customer = $2', [value, id]);
   }
 }
 

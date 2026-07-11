@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import Icon from '../../components/Icon';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 
 export default function LoginScreen({ navigation }: any) {
@@ -53,10 +54,11 @@ export default function LoginScreen({ navigation }: any) {
 
           <View style={styles.logoContainer}>
             <Image
-              source={require('../../../assets/logo_laundry.png')}
-              style={styles.logo}
+              source={require('../../../assets/logo-laund-transparant.png')}
+              style={styles.logoIcon}
               resizeMode="contain"
             />
+            <Text style={styles.logoText}>laundaja</Text>
           </View>
 
           <Text style={styles.welcomeTitle}>Selamat Datang Kembali</Text>
@@ -94,7 +96,7 @@ export default function LoginScreen({ navigation }: any) {
                 secureTextEntry={!showPass}
               />
               <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-                <Text style={styles.eyeIcon}>{showPass ? '🙈' : '👁️'}</Text>
+                <Icon name={showPass ? 'eye-slash' : 'eye'} size={20} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity style={styles.forgotWrap} onPress={() => navigation.navigate('ForgotPassword')}>
@@ -159,16 +161,23 @@ const styles = StyleSheet.create({
     opacity: 0.06,
   },
   logoContainer: {
-    width: 160,
-    height: 76,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255,255,255,0.94)',
     marginBottom: Spacing.md,
-    overflow: 'hidden',
   },
-  logo: { width: 140, height: 60 },
+  logoIcon: { width: 36, height: 36, marginRight: 8, tintColor: '#23395B' },
+  logoText: {
+    fontSize: 24,
+    fontWeight: '400',
+    color: '#23395B',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    letterSpacing: 0.5,
+  },
   welcomeTitle: {
     fontSize: 20,
     fontWeight: '700',

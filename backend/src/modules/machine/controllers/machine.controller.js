@@ -14,6 +14,13 @@ exports.getById = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+exports.getAllWithStatus = async (req, res, next) => {
+  try {
+    const data = await machineService.getAllWithStatus();
+    res.status(200).json({ status: 'success', data });
+  } catch (err) { next(err); }
+};
+
 exports.getAvailable = async (req, res, next) => {
   try {
     const { tanggal, shift } = req.query;
@@ -41,7 +48,7 @@ exports.createMachine = async (req, res, next) => {
       kapasitas_kg,
       konsumsi_kwh,
       penggunaan_air_liter
-    });
+    }, req.user);
 
     res.status(201).json({
       status: 'success',
@@ -56,19 +63,35 @@ exports.createMachine = async (req, res, next) => {
 exports.updateMachine = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { nama_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter } = req.body;
+    const { tipe_mesin, nama_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter } = req.body;
 
     const machine = await machineService.updateMachine(parseInt(id), {
+      tipe_mesin,
       nama_mesin,
       kapasitas_kg,
       konsumsi_kwh,
       penggunaan_air_liter
-    });
+    }, req.user);
 
     res.status(200).json({
       status: 'success',
       data: machine,
       message: 'Mesin berhasil diupdate'
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteMachine = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await machineService.deleteMachine(parseInt(id), req.user);
+
+    res.status(200).json({
+      status: 'success',
+      data: null,
+      message: 'Mesin berhasil dihapus'
     });
   } catch (err) {
     next(err);
@@ -88,7 +111,7 @@ exports.updateMachineStatus = async (req, res, next) => {
       });
     }
 
-    const machine = await machineService.updateMachineStatus(parseInt(id), status_mesin);
+    const machine = await machineService.updateMachineStatus(parseInt(id), status_mesin, req.user);
 
     res.status(200).json({
       status: 'success',

@@ -22,7 +22,7 @@ const protect = async (req, res, next) => {
 
     if (decoded.table === USER_TABLES.CUSTOMER) {
       const { rows } = await db.query(
-        'SELECT id_customer AS id, nama_lengkap, email, username, status_akun FROM customer WHERE id_customer = $1',
+        'SELECT id_customer AS id, nama_lengkap, email, username, alamat, no_hp, status_akun, password_reset_required FROM customer WHERE id_customer = $1',
         [decoded.id]
       );
       if (rows.length > 0) {

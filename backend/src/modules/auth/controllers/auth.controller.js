@@ -91,6 +91,64 @@ exports.logout = async (req, res, next) => {
   }
 };
 
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { nama_lengkap, username, email, no_hp, alamat, currentPassword } = req.body;
+    const user = req.user;
+
+    if (user.table !== 'customer') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Fitur ini hanya untuk customer.',
+      });
+    }
+
+    if (username || email) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Masukkan password saat ini untuk mengubah username atau email.',
+        });
+      }
+
+      await authService.verifyPassword(user.id, user.table, currentPassword);
+    }
+
+    const updated = await authService.updateProfile(user.id, { nama_lengkap, username, email, no_hp, alamat });
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Profil berhasil diperbarui.',
+      data: { user: updated },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const email = (req.body.email || '').trim();
+
+    if (!email) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Email wajib diisi.',
+      });
+    }
+
+    const result = await authService.forgotPassword({ email });
+
+    res.status(200).json({
+      status: 'success',
+      message: result.message,
+      data: { message: result.message },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.changePassword = async (req, res, next) => {
   try {
     const oldPassword = req.body.oldPassword || '';

@@ -9,6 +9,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
+import Icon from '../../components/Icon';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -22,11 +23,12 @@ export default function ProfileScreen() {
     .slice(0, 2);
 
   const profileMenu = [
-    { icon: '📋', label: 'Riwayat Pesanan', target: 'Riwayat' },
-    { icon: '📍', label: 'Alamat Saya', target: 'Address' },
-    { icon: '🔔', label: 'Notifikasi', target: '' },
-    { icon: '❓', label: 'Pusat Bantuan', target: '' },
-    { icon: '📝', label: 'Syarat & Ketentuan', target: '' },
+    { icon: 'pencil', label: 'Edit Profil', target: 'EditProfile' },
+    { icon: 'card-list', label: 'Riwayat Pesanan', target: 'Riwayat' },
+    { icon: 'geo-alt', label: 'Alamat Saya', target: 'Address' },
+    { icon: 'bell', label: 'Notifikasi', target: 'Notification' },
+    { icon: 'info-circle', label: 'Pusat Bantuan', target: 'Help' },
+    { icon: 'file-text', label: 'Syarat & Ketentuan', target: 'Terms' },
   ];
 
   return (
@@ -35,7 +37,7 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>Profil Saya</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
         <View style={styles.profileCard}>
           <View style={styles.avatarBox}>
             <Text style={styles.avatarText}>{initials}</Text>
@@ -48,34 +50,49 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>24</Text>
-            <Text style={styles.statLabel}>Total Cuci</Text>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statLabel}>Pesanan</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statLabel}>Poin</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statLabel}>Voucher</Text>
           </View>
         </View>
 
-        <View style={styles.menuCard}>
+        <View style={styles.menuGroup}>
           {profileMenu.map((item, i) => (
             <TouchableOpacity
-              key={item.label}
-              style={[styles.menuItem, i < profileMenu.length - 1 && styles.menuItemBorder]}
+              key={i}
+              style={styles.menuItem}
               activeOpacity={0.7}
-              onPress={() => item.target && (navigation as any).navigate(item.target)}
+              onPress={() => {
+                if (item.target) {
+                  (navigation as any).navigate(item.target);
+                }
+              }}
             >
-              <View style={styles.menuIconBox}>
-                <Text style={styles.menuIcon}>{item.icon}</Text>
+              <View style={styles.menuLeft}>
+                <View style={styles.menuIconBox}>
+                  <Icon name={item.icon} size={18} color={Colors.secondary} />
+                </View>
+                <Text style={styles.menuLabel}>{item.label}</Text>
               </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <Text style={styles.menuArrow}>›</Text>
+              <Icon name="chevron-right" size={16} color={Colors.textMuted} />
             </TouchableOpacity>
           ))}
         </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.7}>
-          <Text style={styles.logoutBtnText}>Keluar</Text>
+          <Icon name="door-open" size={18} color={Colors.error} style={{ marginRight: 8 }} />
+          <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>
-
-        <View style={{ height: 32 }} />
       </ScrollView>
     </View>
   );
@@ -89,72 +106,70 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.xl,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  headerTitle: { fontSize: 24, fontWeight: '700', color: '#fff' },
   content: { paddingBottom: Spacing.xxl },
   profileCard: {
     alignItems: 'center',
-    paddingVertical: Spacing.xxl,
-    paddingHorizontal: Spacing.xl,
+    marginTop: Spacing.lg,
+    marginHorizontal: Spacing.xl,
     backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xxl,
+    ...Shadows.md,
   },
   avatarBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing.md,
   },
-  avatarText: { fontSize: 24, fontWeight: '800', color: '#fff' },
-  userName: { fontSize: 18, fontWeight: '700', color: Colors.text, marginBottom: 4 },
+  avatarText: { fontSize: 22, fontWeight: '700', color: '#fff' },
+  userName: { fontSize: 16, fontWeight: '700', color: Colors.text, marginBottom: 2 },
   userEmail: { fontSize: 12, color: Colors.textMuted, marginBottom: Spacing.sm },
   userRoleBadge: {
-    backgroundColor: Colors.primaryLight,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.primary + '30',
+    backgroundColor: Colors.primaryLight,
   },
-  userRoleText: { fontSize: 10, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  userRoleText: { fontSize: 10, fontWeight: '700', color: Colors.primary, textTransform: 'capitalize' },
   statsRow: {
     flexDirection: 'row',
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.lg,
     backgroundColor: Colors.surface,
-    paddingVertical: Spacing.lg,
-    marginBottom: Spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    ...Shadows.sm,
   },
-  statCard: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  statLabel: { fontSize: 10, color: Colors.textMuted, fontWeight: '500' },
+  statItem: { flex: 1, alignItems: 'center' },
+  statNumber: { fontSize: 18, fontWeight: '700', color: Colors.text },
+  statLabel: { fontSize: 10, color: Colors.textMuted, marginTop: 2 },
   statDivider: {
     width: 1,
-    backgroundColor: Colors.borderLight,
-    alignSelf: 'center',
-    height: 30,
+    backgroundColor: Colors.border,
+    marginVertical: 4,
   },
-  menuCard: {
-    backgroundColor: Colors.surface,
+  menuGroup: {
     marginHorizontal: Spacing.xl,
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
     ...Shadows.sm,
-    marginBottom: Spacing.xl,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.xl,
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.borderLight,
   },
-  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  menuLeft: { flexDirection: 'row', alignItems: 'center' },
   menuIconBox: {
     width: 32,
     height: 32,
@@ -164,17 +179,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: Spacing.md,
   },
-  menuIcon: { fontSize: 16 },
-  menuLabel: { flex: 1, fontSize: 13, fontWeight: '600', color: Colors.text },
-  menuArrow: { fontSize: 18, color: Colors.textMuted, fontWeight: '300' },
+  menuLabel: { fontSize: 13, fontWeight: '600', color: Colors.text },
   logoutBtn: {
-    marginHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md + 2,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.error + '30',
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.errorLight,
+    justifyContent: 'center',
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.xxl,
+    paddingVertical: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.sm,
   },
-  logoutBtnText: { fontSize: 13, fontWeight: '600', color: Colors.error },
+  logoutText: { fontSize: 14, fontWeight: '600', color: Colors.error },
 });

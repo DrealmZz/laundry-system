@@ -1,13 +1,18 @@
 const crypto = require('crypto');
 const db = require('../../../shared/database/db');
+const { hashPassword } = require('../../../shared/utils');
 const transaksiRepository = require('../repositories/transaksi.repository');
 const pemesananRepository = require('../../pemesanan/repositories/pemesanan.repository');
+const customerRepository = require('../../auth/repositories/customer.repository');
 const auditLogRepository = require('../../auth/repositories/audit-log.repository');
 
 class TransaksiService {
   async createTransaksi({ id_pemesanan, id_karyawan, metode_pembayaran }) {
     if (!id_pemesanan || !metode_pembayaran) {
       throw Object.assign(new Error('id_pemesanan dan metode_pembayaran wajib diisi.'), { statusCode: 400 });
+    }
+    if (!id_karyawan) {
+      throw Object.assign(new Error('id_karyawan wajib diisi.'), { statusCode: 400 });
     }
 
     if (!['cash', 'transfer', 'qris', 'koin'].includes(metode_pembayaran)) {
@@ -19,9 +24,9 @@ class TransaksiService {
       throw Object.assign(new Error('Pemesanan tidak ditemukan.'), { statusCode: 404 });
     }
 
-    if (pemesanan.status_pesanan !== 'menunggu pembayaran') {
+    if (pemesanan.status_pesanan !== 'menunggu pembayaran' && !(pemesanan.jenis_pencucian === 'koin' && pemesanan.status_pesanan === 'disetujui')) {
       throw Object.assign(
-        new Error(`Pemesanan dengan status '${pemesanan.status_pesanan}' belum bisa dibayar. Status harus 'menunggu pembayaran'.`),
+        new Error(`Pemesanan dengan status '${pemesanan.status_pesanan}' belum bisa dibayar.`),
         { statusCode: 400 }
       );
     }
@@ -58,6 +63,117 @@ class TransaksiService {
     await pemesananRepository.updateStatus(id_pemesanan, 'sudah dibayar');
 
     return transaksi;
+  }
+
+  async createWalkInTransaksi({ nama_lengkap, no_hp, id_layanan, berat_kg, jenis_pencucian, metode_pengambilan, metode_pembayaran, alamat, password }, id_karyawan) {
+    // Validasi wajib
+    if (!id_karyawan) {
+      throw Object.assign(new Error('id_karyawan wajib diisi (kasir harus login).'), { statusCode: 400 });
+    }
+    if (!nama_lengkap || !no_hp || !id_layanan || !berat_kg || !jenis_pencucian || !metode_pembayaran) {
+      throw Object.assign(new Error('Semua field wajib diisi (nama_lengkap, no_hp, id_layanan, berat_kg, jenis_pencucian, metode_pembayaran).'), { statusCode: 400 });
+    }
+
+    // Validasi enum
+    if (!['kiloan', 'koin'].includes(jenis_pencucian)) {
+      throw Object.assign(new Error('jenis_pencucian harus kiloan atau koin.'), { statusCode: 400 });
+    }
+
+    // metode_pengambilan: wajib untuk kiloan, auto ambil_sendiri untuk koin
+    if (jenis_pencucian === 'kiloan') {
+      if (!metode_pengambilan) {
+        throw Object.assign(new Error('metode_pengambilan wajib diisi untuk layanan kiloan (ambil_sendiri/pengiriman).'), { statusCode: 400 });
+      }
+      if (!['ambil_sendiri', 'pengiriman'].includes(metode_pengambilan)) {
+        throw Object.assign(new Error('metode_pengambilan harus ambil_sendiri atau pengiriman.'), { statusCode: 400 });
+      }
+    } else {
+      metode_pengambilan = 'ambil_sendiri';
+    }
+    if (!['cash', 'transfer', 'qris', 'koin'].includes(metode_pembayaran)) {
+      throw Object.assign(new Error('metode_pembayaran harus cash, transfer, qris, atau koin.'), { statusCode: 400 });
+    }
+    if (parseFloat(berat_kg) <= 0) {
+      throw Object.assign(new Error('berat_kg harus lebih dari 0.'), { statusCode: 400 });
+    }
+
+    // 1. Cari / buat customer (auto-daftar)
+    let customer = await customerRepository.findByLogin(no_hp);
+    if (!customer) {
+      const hashed = await hashPassword(password || no_hp);
+      customer = await customerRepository.create({
+        nama_lengkap,
+        username: no_hp,
+        no_hp,
+        email: `${no_hp}@laundaja.com`,
+        password: hashed,
+        alamat: alamat || 'Tidak diisi',
+      });
+    }
+
+    // 2. Ambil harga layanan
+    const { rows: layananRows } = await db.query(
+      'SELECT id_layanan, nama_layanan, jenis_layanan, harga FROM layanan WHERE id_layanan = $1',
+      [id_layanan]
+    );
+    if (!layananRows[0]) {
+      throw Object.assign(new Error('Layanan tidak ditemukan.'), { statusCode: 404 });
+    }
+    const layanan = layananRows[0];
+    const harga = parseFloat(layanan.harga);
+
+    // 3. Hitung shift dari jam sekarang
+    const now = new Date();
+    const jam = now.getHours();
+    let shift;
+    if (jam >= 6 && jam < 12) shift = 'pagi';
+    else if (jam >= 12 && jam < 16) shift = 'siang';
+    else if (jam >= 16 && jam < 19) shift = 'sore';
+    else shift = 'malam';
+
+    // 4. Buat pemesanan walk-in (langsung menunggu pembayaran)
+    const pemesanan = await pemesananRepository.create({
+      id_customer: customer.id_customer,
+      id_layanan,
+      berat_kg: parseFloat(berat_kg),
+      jenis_pencucian,
+      metode_pengambilan,
+      tanggal_pesanan: now.toISOString().split('T')[0],
+      shift,
+      status_pesanan: 'menunggu pembayaran',
+      catatan: 'Walk-in outlet',
+    });
+
+    // 5. Hitung total & buat nomor struk
+    const total = jenis_pencucian === 'kiloan' ? harga * parseFloat(berat_kg) : harga;
+    const dateStr = now.getFullYear().toString() +
+      (now.getMonth() + 1).toString().padStart(2, '0') +
+      now.getDate().toString().padStart(2, '0');
+    const randomNum = crypto.randomInt(1000, 9999);
+    const nomor_struk = `STRUK-${dateStr}-${randomNum}`;
+
+    // 6. Buat transaksi
+    const transaksi = await transaksiRepository.create({
+      id_pemesanan: pemesanan.id_pemesanan,
+      id_customer: customer.id_customer,
+      id_karyawan,
+      nomor_struk,
+      total,
+      metode_pembayaran,
+      status_pembayaran: 'lunas',
+    });
+
+    // 7. Update pemesanan → sudah dibayar
+    await pemesananRepository.updateStatus(pemesanan.id_pemesanan, 'sudah dibayar');
+
+    return {
+      id_transaksi: transaksi.id_transaksi,
+      nomor_struk: transaksi.nomor_struk,
+      id_pemesanan: pemesanan.id_pemesanan,
+      id_customer: customer.id_customer,
+      nama_layanan: layanan.nama_layanan,
+      total,
+    };
   }
 
   async getAllTransaksi({ id_customer, status_pembayaran, start_date, end_date, limit, offset }) {
@@ -109,7 +225,8 @@ class TransaksiService {
     await auditLogRepository.create({
       userId: null,
       userTable: 'karyawan',
-      action: 'PAYMENT_CONFIRMED'
+      action: 'PAYMENT_CONFIRMED',
+      message: `Pembayaran transaksi #${id} dikonfirmasi oleh kasir. Metode: ${metode_pembayaran}`,
     });
 
     return updated;

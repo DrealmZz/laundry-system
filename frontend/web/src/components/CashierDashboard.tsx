@@ -20,6 +20,7 @@ interface CashierDashboardProps {
   onDeleteTask: (id: string) => void;
   onSelectReceipt: (id: string) => void;
   onNavigateToNewTransaction: () => void;
+  loading?: boolean;
 }
 
 export default function CashierDashboard({
@@ -29,9 +30,18 @@ export default function CashierDashboard({
   onAddTask,
   onDeleteTask,
   onSelectReceipt,
-  onNavigateToNewTransaction
+  onNavigateToNewTransaction,
+  loading = false
 }: CashierDashboardProps) {
   const [newTaskText, setNewTaskText] = useState('');
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="w-8 h-8 border-4 border-teal/30 border-t-teal rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   // Calculate statistics
   const todayCompleted = transactions.filter(t => t.status === 'Selesai');

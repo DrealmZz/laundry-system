@@ -11,9 +11,13 @@ import {
   ScrollView,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { captureRef } from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
+import QrisReceipt from './QrisReceipt';
+import { formatCurrency } from '../../utils/format';
 
 export default function QrisPaymentScreen({ route, navigation }: any) {
   const { token } = useAuth();
@@ -24,6 +28,7 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
   const [checking, setChecking] = useState(false);
   const [paid, setPaid] = useState(false);
   const [timeLeft, setTimeLeft] = useState(900);
+  const receiptRef = useRef<any>(null);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -79,10 +84,28 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
 
   const downloadQR = async () => {
     try {
-      // Generate QR code sebagai image dan simpan ke galeri
+      if (!receiptRef.current) {
+        Alert.alert('Gagal', 'Receipt belum siap');
+        return;
+      }
+
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Izin Diperlukan',
+          'Aplikasi membutuhkan izin akses galeri untuk menyimpan QR Code'
+        );
+        return;
+      }
+
+      const uri = await captureRef(receiptRef.current, {
+        format: 'png',
+        quality: 1,
+      });
+      await MediaLibrary.saveToLibraryAsync(uri);
       Alert.alert('Berhasil', 'QR Code berhasil disimpan ke galeri');
     } catch (error: any) {
-      Alert.alert('Gagal', error.message || 'Gagal download QR code');
+      Alert.alert('Gagal', error.message || 'Gagal menyimpan QR Code');
     }
   };
 
@@ -131,7 +154,7 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
           <View style={styles.qrisFooter}>
             <Text style={styles.qrisAmountLabel}>Total Pembayaran</Text>
             <Text style={styles.qrisAmount}>
-              Rp{amount.toLocaleString('id-ID')}
+              {formatCurrency(amount)}
             </Text>
           </View>
         </View>
@@ -213,6 +236,16 @@ export default function QrisPaymentScreen({ route, navigation }: any) {
           </Animated.View>
         </Animated.View>
       )}
+
+      <View ref={receiptRef} collapsable={false} style={styles.receiptHidden}>
+        <QrisReceipt
+          qrisData={paymentData?.qris_data || `laundaja:${bookingId}:${amount}`}
+          amount={amount}
+          bookingId={paymentData?.id_pemesanan || paymentData?.id || bookingId}
+          serviceName={paymentData?.service || serviceName}
+          date={paymentData?.date || bookingDate || ''}
+        />
+      </View>
     </View>
   );
 }
@@ -360,6 +393,11 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   cancelBtnText: { ...Typography.body, color: Colors.textMuted, fontWeight: '600' },
+  receiptHidden: {
+    position: 'absolute',
+    opacity: 0,
+    pointerEvents: 'none',
+  },
   successOverlay: {
     position: 'absolute',
     top: 0,

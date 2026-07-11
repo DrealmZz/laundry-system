@@ -15,11 +15,9 @@ import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import Toast from '../../components/Toast';
 import CalendarModal from '../../components/CalendarModal';
-
-const CUCI_TYPES = [
-  { id: 'cuci_saja', label: 'Cuci Saja', desc: 'Mesin cuci + deterjen gratis', icon: '🧺', price: 20000 },
-  { id: 'cuci_kering', label: 'Cuci + Kering', desc: 'Cuci + mesin pengering', icon: '🔄', price: 20000 },
-] as const;
+import WheelPicker from '../../components/WheelPicker';
+import Icon from '../../components/Icon';
+import { formatCurrency } from '../../utils/format';
 
 const TIPE_STATUS: Record<string, { label: string; color: string; bg: string }> = {
   tersedia: { label: 'Tersedia', color: '#166534', bg: '#EDFAF4' },
@@ -27,19 +25,21 @@ const TIPE_STATUS: Record<string, { label: string; color: string; bg: string }> 
   perbaikan: { label: 'Perbaikan', color: '#DC2626', bg: '#FEF2F2' },
 };
 
-export default function BookingKoinScreen({ navigation }: any) {
+export default function BookingKoinScreen({ route, navigation }: any) {
   const { token } = useAuth();
+
+  const allServices: any[] = route.params?.services || [];
 
   const [machines, setMachines] = useState<any[]>([]);
   const [loadingMachines, setLoadingMachines] = useState(false);
-  const [jadwalLoading, setJadwalLoading] = useState(false);
 
   const [toast, setToast] = useState({ message: '', visible: false });
 
   const [selectedMachine, setSelectedMachine] = useState<number | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
   const [tanggal, setTanggal] = useState('');
   const [jamMulai, setJamMulai] = useState('');
-  const [jenisCuci, setJenisCuci] = useState<string | null>(null);
+  const [showJamPicker, setShowJamPicker] = useState(false);
   const [catatan, setCatatan] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -83,24 +83,28 @@ export default function BookingKoinScreen({ navigation }: any) {
     });
   }, [tanggal, jamMulai]);
 
-  const toISO = (d: Date) => d.toISOString().split('T')[0];
+  const toISO = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
 
-  const formatDisplay = (d: Date) => {
-    const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-    const monthNames = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
-    const dayName = dayNames[d.getDay()];
-    const date = d.getDate();
-    const month = monthNames[d.getMonth()];
-    return `${dayName}, ${date} ${month}`;
+  const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'];
+
+  const formatDisplay = (iso: string) => {
+    const d = new Date(iso + 'T00:00:00');
+    return `${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTH_NAMES[d.getMonth()]}`;
   };
 
   const isToday = (d: Date) => toISO(d) === toISO(new Date());
 
   const selectedMachineData = machines.find((m: any) => m.id_mesin === selectedMachine);
 
-  const selectedCuciData = CUCI_TYPES.find((c) => c.id === jenisCuci);
+  const selectedService = allServices.find((s: any) => s.id_layanan === selectedServiceId);
 
-  const totalHarga = selectedCuciData ? selectedCuciData.price : 0;
+  const totalHarga = selectedService ? selectedService.harga : 0;
 
   const validateJam = (time: string): boolean => {
     const match = time.match(/^(\d{1,2}):(\d{2})$/);
@@ -126,15 +130,15 @@ export default function BookingKoinScreen({ navigation }: any) {
     if (!jamMulai) return showToast('Masukkan jam pemakaian');
     if (!validateJam(jamMulai)) return showToast('Format jam HH:MM — contoh 14:30');
     if (!isJamValid(jamMulai)) return showToast('Jam pemakaian minimal 1 jam dari sekarang');
-    if (!jenisCuci) return showToast('Pilih jenis pencucian');
+    if (!selectedService) return showToast('Pilih jenis pencucian');
 
     setSubmitting(true);
     try {
       await api.createBooking({
-        id_layanan: jenisCuci === 'cuci_saja' ? 3 : 4, // Koin Cuci Saja or Koin Cuci + Kering
+        id_layanan: selectedService.id_layanan,
         mesin_ids: [selectedMachine],
         tanggal_pesanan: tanggal,
-        shift: jamMulai,
+        jam_mulai: jamMulai,
         jenis_pencucian: 'koin',
         metode_pengambilan: 'ambil_sendiri',
         catatan: catatan || null,
@@ -145,13 +149,13 @@ export default function BookingKoinScreen({ navigation }: any) {
     } finally {
       setSubmitting(false);
     }
-  }, [selectedMachine, tanggal, jamMulai, jenisCuci, catatan, token, totalHarga]);
+  }, [selectedMachine, tanggal, jamMulai, selectedService, catatan, token]);
 
   if (success) {
     return (
       <View style={styles.successContainer}>
         <View style={styles.successIconBox}>
-          <Text style={styles.successIcon}>🫧</Text>
+          <Icon name="check-circle-fill" size={40} color={Colors.primary} />
         </View>
         <Text style={styles.successTitle}>Booking Mesin Berhasil!</Text>
         <Text style={styles.successDesc}>
@@ -218,7 +222,7 @@ export default function BookingKoinScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.cardHeaderIconBox, { backgroundColor: Colors.primary + '18' }]}>
-                <Text style={styles.cardHeaderIcon}>📅</Text>
+                <Icon name="calendar" size={16} color={Colors.primary} />
               </View>
               <Text style={styles.cardHeaderLabel}>Tanggal Pemakaian *</Text>
             </View>
@@ -259,7 +263,7 @@ export default function BookingKoinScreen({ navigation }: any) {
               activeOpacity={0.7}
             >
               <View style={styles.datePickerIconBox}>
-                <Text style={styles.datePickerIcon}>📅</Text>
+                <Icon name="calendar" size={16} color={Colors.textMuted} />
               </View>
               <View style={styles.datePickerInfo}>
                 <Text style={[styles.datePickerLabel, tanggal && styles.datePickerLabelFilled]}>
@@ -284,25 +288,29 @@ export default function BookingKoinScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.cardHeaderIconBox, { backgroundColor: Colors.secondary + '18' }]}>
-                <Text style={styles.cardHeaderIcon}>⏰</Text>
+                <Icon name="clock" size={16} color={Colors.secondary} />
               </View>
               <Text style={styles.cardHeaderLabel}>Jam Pemakaian *</Text>
             </View>
-            <View style={styles.inputBox}>
-              <TextInput
-                style={styles.input}
-                placeholder="cth: 14:30"
-                placeholderTextColor={Colors.textMuted}
-                value={jamMulai}
-                onChangeText={setJamMulai}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-              />
-            </View>
-            {jamMulai !== '' && !validateJam(jamMulai) && (
-              <Text style={styles.errorText}>Format HH:MM (contoh: 14:30)</Text>
-            )}
-            {jamMulai !== '' && validateJam(jamMulai) && !isJamValid(jamMulai) && (
+            <TouchableOpacity
+              style={[styles.datePickerBtn, jamMulai ? styles.datePickerBtnFilled : null]}
+              onPress={() => setShowJamPicker(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.datePickerIconBox}>
+                <Icon name="clock" size={16} color={Colors.textMuted} />
+              </View>
+              <View style={styles.datePickerInfo}>
+                <Text style={[styles.datePickerLabel, jamMulai && styles.datePickerLabelFilled]}>
+                  {jamMulai || 'Pilih jam pemakaian'}
+                </Text>
+                {!jamMulai && (
+                  <Text style={styles.datePickerHint}>Ketuk untuk memilih jam</Text>
+                )}
+              </View>
+              <Text style={styles.datePickerArrow}>›</Text>
+            </TouchableOpacity>
+            {jamMulai !== '' && !isJamValid(jamMulai) && (
               <Text style={styles.errorText}>Minimal 1 jam dari sekarang</Text>
             )}
           </View>
@@ -311,14 +319,14 @@ export default function BookingKoinScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.cardHeaderIconBox, { backgroundColor: Colors.secondary + '18' }]}>
-                <Text style={styles.cardHeaderIcon}>🫧</Text>
+                <Icon name="droplet" size={16} color={Colors.secondary} />
               </View>
               <Text style={styles.cardHeaderLabel}>Pilih Mesin *</Text>
             </View>
 
             {!tanggal || !jamMulai ? (
               <View style={styles.machinePlaceholder}>
-                <Text style={styles.machinePlaceholderIcon}>📋</Text>
+                <Icon name="clipboard" size={28} color={Colors.textMuted} />
                 <Text style={styles.machinePlaceholderTitle}>Pilih jadwal terlebih dahulu</Text>
                 <Text style={styles.machinePlaceholderDesc}>
                   Pilih tanggal dan jam pemakaian di atas untuk melihat mesin yang tersedia.
@@ -331,7 +339,7 @@ export default function BookingKoinScreen({ navigation }: any) {
               </View>
             ) : machines.length === 0 ? (
               <View style={styles.machinePlaceholder}>
-                <Text style={styles.machinePlaceholderIcon}>🔴</Text>
+                <Icon name="circle-fill" size={28} color={Colors.error} />
                 <Text style={styles.machinePlaceholderTitle}>Tidak ada mesin tersedia</Text>
                 <Text style={styles.machinePlaceholderDesc}>
                   Semua mesin sudah dipesan untuk jadwal ini. Silakan pilih jadwal lain.
@@ -379,31 +387,32 @@ export default function BookingKoinScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.cardHeaderIconBox, { backgroundColor: Colors.primary + '18' }]}>
-                <Text style={styles.cardHeaderIcon}>🧺</Text>
+                <Icon name="basket" size={16} color={Colors.primary} />
               </View>
               <Text style={styles.cardHeaderLabel}>Jenis Pencucian *</Text>
             </View>
             <View style={styles.cuciRow}>
-              {CUCI_TYPES.map((c) => {
-                const active = jenisCuci === c.id;
+              {allServices.map((s: any) => {
+                const active = selectedServiceId === s.id_layanan;
+                const isCuciSaja = s.nama_layanan.toLowerCase().includes('saja');
                 return (
                   <TouchableOpacity
-                    key={c.id}
+                    key={s.id_layanan}
                     style={[styles.cuciCard, active && styles.cuciCardActive]}
-                    onPress={() => setJenisCuci(c.id)}
+                    onPress={() => setSelectedServiceId(s.id_layanan)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.cuciIconBox, active && { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
-                      <Text style={styles.cuciIcon}>{c.icon}</Text>
-                    </View>
+            <View style={[styles.cuciIconBox, active && { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+              <Icon name={isCuciSaja ? 'basket' : 'arrow-repeat'} size={20} color={active ? '#fff' : Colors.primary} />
+            </View>
                     <Text style={[styles.cuciLabel, active && { color: '#fff' }]}>
-                      {c.label}
+                      {s.nama_layanan.replace('Koin ', '')}
                     </Text>
                     <Text style={[styles.cuciDesc, active && { color: 'rgba(255,255,255,0.6)' }]}>
-                      {c.desc}
+                      {isCuciSaja ? 'Mesin cuci + deterjen gratis' : 'Cuci + mesin pengering'}
                     </Text>
                     <Text style={[styles.cuciPrice, active && { color: '#fff' }]}>
-                      Rp{c.price.toLocaleString('id-ID')}
+                      {formatCurrency(s.harga)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -415,7 +424,7 @@ export default function BookingKoinScreen({ navigation }: any) {
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <View style={[styles.cardHeaderIconBox, { backgroundColor: Colors.secondary + '18' }]}>
-                <Text style={styles.cardHeaderIcon}>📄</Text>
+                <Icon name="file-text" size={16} color={Colors.secondary} />
               </View>
               <Text style={styles.cardHeaderLabel}>Catatan Tambahan</Text>
             </View>
@@ -433,7 +442,7 @@ export default function BookingKoinScreen({ navigation }: any) {
           </View>
 
           {/* Summary */}
-          {selectedMachine && tanggal && validateJam(jamMulai) && isJamValid(jamMulai) && jenisCuci && (
+          {selectedMachine && tanggal && validateJam(jamMulai) && isJamValid(jamMulai) && selectedServiceId && (
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>Ringkasan Booking</Text>
               <View style={styles.summaryRow}>
@@ -453,7 +462,7 @@ export default function BookingKoinScreen({ navigation }: any) {
               <View style={styles.summaryDivider} />
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Layanan</Text>
-                <Text style={styles.summaryValue}>{selectedCuciData?.label || '-'}</Text>
+                <Text style={styles.summaryValue}>{selectedService?.nama_layanan || '-'}</Text>
               </View>
               <View style={[styles.summaryDivider, { marginBottom: Spacing.sm }]} />
               <View style={styles.summaryTotalRow}>
@@ -489,6 +498,21 @@ export default function BookingKoinScreen({ navigation }: any) {
           </Text>
         </View>
       </ScrollView>
+
+      <WheelPicker
+        visible={showJamPicker}
+        onClose={() => setShowJamPicker(false)}
+        onSelect={(h, m) => {
+          const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          if (!isJamValid(time)) {
+            showToast('Jam pemakaian minimal 1 jam dari sekarang');
+            setShowJamPicker(false);
+            return;
+          }
+          setJamMulai(time);
+          setShowJamPicker(false);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -654,9 +678,15 @@ const styles = StyleSheet.create({
     borderColor: '#86EFAC',
   },
   availableInfoText: { fontSize: 11, fontWeight: '600', color: '#166534' },
-  dateRow: { flexDirection: 'row', gap: Spacing.sm },
+  dateRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+  },
   dateCard: {
     flex: 1,
+    minWidth: 0,
     borderRadius: 16,
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.md,
@@ -664,6 +694,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border + '30',
     backgroundColor: '#FAF7F2',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: 4,
   },
   dateTodayTag: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },

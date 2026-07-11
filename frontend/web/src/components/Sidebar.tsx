@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   UserCircle,
   CheckCircle2,
+  Cpu,
+  FileText,
 } from 'lucide-react';
 import LaundajaLogo from './LaundajaLogo';
 import { User } from '../types';
@@ -27,6 +29,7 @@ interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   pendingBookingsCount: number;
+  kasirActiveCount?: number;
   verifikasiCount?: number;
   user: User;
   onLogout: () => void;
@@ -51,12 +54,12 @@ const roleColors: Record<string, string> = {
   owner: 'bg-gold',
 };
 
-export default function Sidebar({ currentRole, activeTab, onTabChange, pendingBookingsCount, verifikasiCount = 0, user, onLogout }: SidebarProps) {
+export default function Sidebar({ currentRole, activeTab, onTabChange, pendingBookingsCount, kasirActiveCount = 0, verifikasiCount = 0, user, onLogout }: SidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const cashierMenus: MenuItem[] = [
     { id: 'dashboard', label: 'Beranda', icon: LayoutDashboard },
-    { id: 'confirm-orders', label: 'Konfirmasi', icon: CheckCircle2 },
+    { id: 'confirm-orders', label: 'Konfirmasi', icon: CheckCircle2, badge: kasirActiveCount },
     { id: 'new-transaction', label: 'Transaksi Baru', icon: PlusCircle },
     { id: 'transactions', label: 'Daftar Transaksi', icon: ReceiptText },
     { id: 'rekap', label: 'Rekap Harian', icon: FileSpreadsheet },
@@ -67,9 +70,11 @@ export default function Sidebar({ currentRole, activeTab, onTabChange, pendingBo
   const adminMenus: MenuItem[] = [
     { id: 'dashboard', label: 'Beranda', icon: LayoutDashboard },
     { id: 'services', label: 'Kelola Layanan', icon: Package },
+    { id: 'machines', label: 'Manajemen Mesin', icon: Cpu },
     { id: 'bookings', label: 'Konfirmasi Booking', icon: CalendarCheck, badge: pendingBookingsCount },
     { id: 'shifts', label: 'Manajemen Shift', icon: CalendarRange },
     { id: 'employees', label: 'Data Karyawan', icon: Users },
+    { id: 'audit-logs', label: 'Audit Log', icon: FileText },
   ];
 
   const ownerMenus: MenuItem[] = [

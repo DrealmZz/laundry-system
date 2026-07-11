@@ -1,33 +1,60 @@
 import React, { useState } from 'react';
 import { Service } from '../types';
-import { Sparkles, Edit2, Check, Sliders, DollarSign, Hourglass, Layers, AlertCircle } from 'lucide-react';
+import { Sparkles, Edit2, Check, X, DollarSign, Hourglass, Layers, AlertCircle } from 'lucide-react';
+
+interface ServiceUpdate {
+  name?: string;
+  duration?: string;
+  price?: number;
+}
 
 interface ServiceManagementProps {
   services: Service[];
   onToggleServiceStatus: (id: string) => void;
-  onUpdateServicePrice: (id: string, price: number) => void;
+  onUpdateService: (id: string, data: ServiceUpdate) => void;
 }
 
 export default function ServiceManagement({
   services,
   onToggleServiceStatus,
-  onUpdateServicePrice
+  onUpdateService
 }: ServiceManagementProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [newPrice, setNewPrice] = useState<string>('');
+  const [editName, setEditName] = useState<string>('');
+  const [editDuration, setEditDuration] = useState<string>('');
+  const [editPrice, setEditPrice] = useState<string>('');
 
   const handleStartEdit = (service: Service) => {
     setEditingId(service.id);
-    setNewPrice(service.price.toString());
+    setEditName(service.name);
+    setEditDuration(service.duration.replace(/\D/g, ''));
+    setEditPrice(service.price.toString());
   };
 
-  const handleSavePrice = (id: string) => {
-    const parsedPrice = parseFloat(newPrice);
+  const handleCancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const handleSave = (id: string) => {
+    if (!editName.trim()) {
+      alert('Nama layanan tidak boleh kosong!');
+      return;
+    }
+    const parsedDuration = parseInt(editDuration, 10);
+    if (isNaN(parsedDuration) || parsedDuration <= 0) {
+      alert('Durasi pengerjaan harus berupa angka menit yang valid!');
+      return;
+    }
+    const parsedPrice = parseFloat(editPrice);
     if (isNaN(parsedPrice) || parsedPrice <= 0) {
       alert('Masukkan harga yang valid!');
       return;
     }
-    onUpdateServicePrice(id, parsedPrice);
+    onUpdateService(id, {
+      name: editName.trim(),
+      duration: `${parsedDuration} menit`,
+      price: parsedPrice,
+    });
     setEditingId(null);
   };
 
@@ -64,10 +91,20 @@ export default function ServiceManagement({
                 {services.map((service) => (
                   <tr key={service.id} className="hover:bg-white/10 transition-colors">
                     <td className="py-4 px-4">
-                      <div>
-                        <span className="font-extrabold text-ink text-xs">{service.name}</span>
-                        <div className="text-[10px] text-ink-muted font-mono mt-0.5">{service.id} • {service.packageType}</div>
-                      </div>
+                      {editingId === service.id ? (
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full bg-white/15 border border-white/30 rounded px-2 py-1 text-xs font-bold text-ink focus:outline-none focus:border-teal"
+                          placeholder="Nama layanan"
+                        />
+                      ) : (
+                        <div>
+                          <span className="font-extrabold text-ink text-xs">{service.name}</span>
+                          <div className="text-[10px] text-ink-muted font-mono mt-0.5">{service.id} • {service.packageType}</div>
+                        </div>
+                      )}
                     </td>
                     <td className="py-4 px-4">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -79,10 +116,24 @@ export default function ServiceManagement({
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <div className="flex items-center gap-1 font-semibold text-ink-secondary">
-                        <Hourglass className="w-3.5 h-3.5 text-ink-muted/50" />
-                        <span>{service.duration}</span>
-                      </div>
+                      {editingId === service.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            value={editDuration}
+                            onChange={(e) => setEditDuration(e.target.value)}
+                            className="w-14 bg-white/15 border border-white/30 rounded px-2 py-1 text-xs font-semibold text-ink focus:outline-none focus:border-teal font-mono"
+                            placeholder="menit"
+                            min="1"
+                          />
+                          <span className="text-[10px] text-ink-muted font-bold">menit</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 font-semibold text-ink-secondary">
+                          <Hourglass className="w-3.5 h-3.5 text-ink-muted/50" />
+                          <span>{service.duration}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="py-4 px-4">
                       {editingId === service.id ? (
@@ -90,17 +141,10 @@ export default function ServiceManagement({
                           <span className="text-[11px] text-ink-muted font-bold">Rp</span>
                           <input
                             type="number"
-                            value={newPrice}
-                            onChange={(e) => setNewPrice(e.target.value)}
-                            className="w-16 bg-white/15 border border-white/30 rounded px-1.5 py-1 text-xs font-bold text-ink focus:outline-none focus:border-teal font-mono"
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(e.target.value)}
+                            className="w-20 bg-white/15 border border-white/30 rounded px-1.5 py-1 text-xs font-bold text-ink focus:outline-none focus:border-teal font-mono"
                           />
-                          <button
-                            onClick={() => handleSavePrice(service.id)}
-                            className="p-1 hover:bg-success/10 text-success rounded border border-success/15"
-                            title="Simpan"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                          </button>
                         </div>
                       ) : (
                         <div>
@@ -110,7 +154,6 @@ export default function ServiceManagement({
                       )}
                     </td>
                     <td className="py-4 px-4">
-                      {/* Interactive toggle switch */}
                       <button
                         onClick={() => onToggleServiceStatus(service.id)}
                         className={`w-10 h-5 flex items-center rounded-full p-0.5 transition-colors duration-200 focus:outline-none ${
@@ -122,13 +165,30 @@ export default function ServiceManagement({
                       </button>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      {editingId !== service.id && (
+                      {editingId === service.id ? (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleSave(service.id)}
+                            className="p-1.5 hover:bg-success/10 text-success rounded-lg border border-success/15 transition-colors"
+                            title="Simpan"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="p-1.5 hover:bg-red-500/10 text-red-400 rounded-lg border border-red-500/15 transition-colors"
+                            title="Batal"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           onClick={() => handleStartEdit(service)}
                           className="p-1.5 hover:bg-white/15 text-ink-muted hover:text-ink rounded-lg transition-colors inline-flex items-center gap-1 font-semibold"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
-                          <span>Ubah Harga</span>
+                          <span>Edit</span>
                         </button>
                       )}
                     </td>

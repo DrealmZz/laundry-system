@@ -10,6 +10,7 @@ import {
   Pressable,
   Alert,
   Modal,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +20,8 @@ import StatusBadge from '../../components/StatusBadge';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import CalendarModal from '../../components/CalendarModal';
+import Icon from '../../components/Icon';
+import { formatCurrency } from '../../utils/format';
 
 const STATUS_ORDER = [
   'menunggu konfirmasi',
@@ -57,16 +60,34 @@ const STATUS_LABELS: Record<string, string> = {
   'selesai': 'Selesai',
 };
 
-function Timeline({ status }: { status: string }) {
-  const currentIdx = STATUS_ORDER.indexOf(status);
+const KOIN_STATUS_ORDER = [
+  'menunggu konfirmasi',
+  'disetujui',
+  'menunggu pembayaran',
+  'sudah dibayar',
+  'selesai',
+];
+
+const KOIN_STATUS_LABELS: Record<string, string> = {
+  'menunggu konfirmasi': 'Menunggu',
+  'disetujui': 'Disetujui',
+  'menunggu pembayaran': 'Bayar',
+  'sudah dibayar': 'Dibayar',
+  'selesai': 'Selesai',
+};
+
+function Timeline({ status, jenisPencucian }: { status: string; jenisPencucian?: string }) {
+  const order = jenisPencucian === 'koin' ? KOIN_STATUS_ORDER : STATUS_ORDER;
+  const labels = jenisPencucian === 'koin' ? KOIN_STATUS_LABELS : STATUS_LABELS;
+  const currentIdx = order.indexOf(status);
 
   return (
     <View style={styles.timeline}>
-      {STATUS_ORDER.map((s, i) => {
+      {order.map((s, i) => {
         const isActive = i <= currentIdx;
-        const label = STATUS_LABELS[s] || s;
+        const label = labels[s] || s;
         const color = isActive ? ACTIVE_COLOR : INACTIVE_COLOR;
-        const isLast = i === STATUS_ORDER.length - 1;
+        const isLast = i === order.length - 1;
 
         return (
           <View key={s} style={styles.timelineItem}>
@@ -87,7 +108,7 @@ function Timeline({ status }: { status: string }) {
 }
 
 export default function StatusScreen() {
-  const { token } = useAuth();
+  const { token, refreshProfile } = useAuth();
   const navigation = useNavigation();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +118,18 @@ export default function StatusScreen() {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleShift, setScheduleShift] = useState<string | null>(null);
+  const [alamatConfirmed, setAlamatConfirmed] = useState(false);
   const [calendarVisible, setCalendarVisible] = useState(false);
+  const [editingAlamat, setEditingAlamat] = useState(false);
+  const [editedAlamat, setEditedAlamat] = useState('');
+  const [savingAlamat, setSavingAlamat] = useState(false);
+
+  const SHIFTS = [
+    { key: 'pagi', label: 'Pagi', range: '08.00 - 12.00' },
+    { key: 'siang', label: 'Siang', range: '12.00 - 16.00' },
+    { key: 'sore', label: 'Sore', range: '16.00 - 20.00' },
+    { key: 'malam', label: 'Malam', range: '20.00 - 23.00' },
+  ];
 
   const fetchBookings = async () => {
     try {
@@ -153,6 +185,11 @@ export default function StatusScreen() {
       return;
     }
 
+    if (!alamatConfirmed) {
+      Alert.alert('Konfirmasi', 'Harap konfirmasi alamat pengiriman terlebih dahulu.');
+      return;
+    }
+
     try {
       await api.setDeliverySchedule(
         selectedBooking.id_pemesanan || selectedBooking.id,
@@ -167,6 +204,28 @@ export default function StatusScreen() {
       fetchBookings();
     } catch (error: any) {
       Alert.alert('Gagal', error.message || 'Gagal menyimpan jadwal');
+    }
+  };
+
+  const handleSaveAlamat = async () => {
+    if (!editedAlamat.trim()) {
+      Alert.alert('Error', 'Alamat tidak boleh kosong.');
+      return;
+    }
+
+    setSavingAlamat(true);
+    try {
+      await api.updateProfile({ alamat: editedAlamat.trim() });
+      if (selectedBooking) {
+        setSelectedBooking({ ...selectedBooking, customer_alamat: editedAlamat.trim() });
+      }
+      setEditingAlamat(false);
+      refreshProfile();
+      Alert.alert('Berhasil', 'Alamat berhasil diperbarui.');
+    } catch (error: any) {
+      Alert.alert('Gagal', error.message || 'Gagal memperbarui alamat');
+    } finally {
+      setSavingAlamat(false);
     }
   };
 
@@ -236,7 +295,7 @@ export default function StatusScreen() {
             </View>
 
             <View style={styles.orderMetaRow}>
-              <Text style={styles.orderMeta}>{item.tanggal_pesanan || item.date}</Text>
+              <Text style={styles.orderMeta}>{item.tanggal_pesanan || item.date || '-'}</Text>
               {item.shift && <Text style={styles.orderMeta}>{item.shift}</Text>}
               {item.berat_kg && (
                 <Text style={styles.orderMeta}>{item.berat_kg} kg</Text>
@@ -245,7 +304,7 @@ export default function StatusScreen() {
 
             <View style={styles.divider} />
 
-            <Timeline status={item.status_pesanan || item.status} />
+            <Timeline status={item.status_pesanan || item.status} jenisPencucian={item.jenis_pencucian} />
 
             {(item.status_pesanan || item.status) === 'menunggu pembayaran' && (
               <>
@@ -257,16 +316,16 @@ export default function StatusScreen() {
                     </View>
                     {item.harga && (
                       <>
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoLabel}>Harga/kg:</Text>
-                          <Text style={styles.infoValue}>Rp {parseFloat(item.harga).toLocaleString('id-ID')}</Text>
-                        </View>
-                        <View style={[styles.infoRow, styles.infoTotal]}>
-                          <Text style={styles.infoTotalLabel}>Total:</Text>
-                          <Text style={styles.infoTotalValue}>
-                            Rp {(parseFloat(item.harga) * parseFloat(item.berat_kg)).toLocaleString('id-ID')}
-                          </Text>
-                        </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Harga/kg:</Text>
+                        <Text style={styles.infoValue}>{formatCurrency(item.harga)}</Text>
+                      </View>
+                      <View style={[styles.infoRow, styles.infoTotal]}>
+                        <Text style={styles.infoTotalLabel}>Total:</Text>
+                        <Text style={styles.infoTotalValue}>
+                          {formatCurrency(item.harga && item.berat_kg ? item.harga * item.berat_kg : 0)}
+                        </Text>
+                      </View>
                       </>
                     )}
                   </View>
@@ -276,7 +335,7 @@ export default function StatusScreen() {
                   onPress={() =>
                     (navigation as any).navigate('QrisPayment', {
                       bookingId: item.id_pemesanan || item.id,
-                      total: item.total || (parseFloat(item.harga) * parseFloat(item.berat_kg)),
+                      total: item.total || ((parseFloat(item.harga) || 0) * (parseFloat(item.berat_kg) || 0)),
                       serviceName: item.nama_layanan || item.service,
                       bookingDate: item.tanggal_pesanan || item.date,
                     })
@@ -345,7 +404,7 @@ export default function StatusScreen() {
         )}
         ListEmptyComponent={
           <EmptyState
-            icon="📭"
+            iconName="inbox"
             title="Tidak ada pesanan aktif"
             message="Anda belum memiliki pesanan yang sedang diproses"
           />
@@ -361,8 +420,87 @@ export default function StatusScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Pilih Jadwal Pengiriman</Text>
-            
+            <Text style={styles.modalTitle}>Atur Jadwal Pengiriman</Text>
+
+            {/* Address Warning */}
+            <View style={styles.addressWarningBox}>
+              <View style={styles.addressWarningHeader}>
+                <Icon name="alert-triangle" size={18} color="#D97706" />
+                <Text style={styles.addressWarningTitle}>Konfirmasi Alamat Pengiriman</Text>
+              </View>
+              <Text style={styles.addressWarningLabel}>Nama Penerima:</Text>
+              <Text style={styles.addressWarningValue}>
+                {selectedBooking?.customer_nama || '-'}
+              </Text>
+              <Text style={styles.addressWarningLabel}>No. WhatsApp:</Text>
+              <Text style={styles.addressWarningValue}>
+                {selectedBooking?.customer_no_hp || '-'}
+              </Text>
+              <Text style={styles.addressWarningLabel}>Alamat:</Text>
+              {editingAlamat ? (
+                <TextInput
+                  style={styles.alamatEditInput}
+                  value={editedAlamat}
+                  onChangeText={setEditedAlamat}
+                  placeholder="Masukkan alamat lengkap"
+                  multiline
+                />
+              ) : (
+                <Text style={styles.addressWarningValue}>
+                  {selectedBooking?.customer_alamat || selectedBooking?.alamat || '-'}
+                </Text>
+              )}
+              <View style={styles.alamatEditRow}>
+                {editingAlamat ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.alamatEditCancelBtn}
+                      onPress={() => {
+                        setEditingAlamat(false);
+                        setEditedAlamat(selectedBooking?.customer_alamat || '');
+                      }}
+                    >
+                      <Text style={styles.alamatEditCancelText}>Batal</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.alamatEditSaveBtn}
+                      onPress={handleSaveAlamat}
+                      disabled={savingAlamat}
+                    >
+                      <Text style={styles.alamatEditSaveText}>
+                        {savingAlamat ? 'Menyimpan...' : 'Simpan'}
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.alamatEditBtn}
+                    onPress={() => {
+                      setEditedAlamat(selectedBooking?.customer_alamat || selectedBooking?.alamat || '');
+                      setEditingAlamat(true);
+                    }}
+                  >
+                    <Icon name="edit" size={14} color={Colors.primary} />
+                    <Text style={styles.alamatEditBtnText}>Edit Alamat</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Confirmation Checkbox */}
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() => setAlamatConfirmed(!alamatConfirmed)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, alamatConfirmed && styles.checkboxActive]}>
+                {alamatConfirmed && <Icon name="check" size={14} color="#fff" />}
+              </View>
+              <Text style={styles.checkboxLabel}>
+                Alamat pengiriman sudah benar
+              </Text>
+            </TouchableOpacity>
+
             <Text style={styles.fieldLabel}>Tanggal Pengiriman</Text>
             <TouchableOpacity
               style={styles.datePickerBtn}
@@ -383,22 +521,30 @@ export default function StatusScreen() {
 
             <Text style={styles.fieldLabel}>Shift Pengiriman</Text>
             <View style={styles.shiftRow}>
-              {['pagi', 'siang', 'sore', 'malam'].map((s) => (
+              {SHIFTS.map((s) => (
                 <TouchableOpacity
-                  key={s}
+                  key={s.key}
                   style={[
                     styles.shiftBtn,
-                    scheduleShift === s && styles.shiftBtnActive,
+                    scheduleShift === s.key && styles.shiftBtnActive,
                   ]}
-                  onPress={() => setScheduleShift(s)}
+                  onPress={() => setScheduleShift(s.key)}
                 >
                   <Text
                     style={[
                       styles.shiftBtnText,
-                      scheduleShift === s && styles.shiftBtnTextActive,
+                      scheduleShift === s.key && styles.shiftBtnTextActive,
                     ]}
                   >
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                    {s.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.shiftBtnRange,
+                      scheduleShift === s.key && styles.shiftBtnRangeActive,
+                    ]}
+                  >
+                    {s.range}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -412,6 +558,7 @@ export default function StatusScreen() {
                   setSelectedBooking(null);
                   setScheduleDate('');
                   setScheduleShift(null);
+                  setAlamatConfirmed(false);
                 }}
               >
                 <Text style={styles.modalCancelBtnText}>Batal</Text>
@@ -713,6 +860,122 @@ const styles = StyleSheet.create({
   modalConfirmBtnText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
+  },
+  addressWarningBox: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  addressWarningHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  addressWarningTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  addressWarningLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E',
+    marginTop: Spacing.xs,
+  },
+  addressWarningValue: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#78350F',
+    marginBottom: Spacing.xs,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxActive: {
+    backgroundColor: Colors.secondary,
+    borderColor: Colors.secondary,
+  },
+  checkboxLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Colors.text,
+    flex: 1,
+  },
+  shiftBtnRange: {
+    fontSize: 9,
+    color: Colors.textMuted,
+    marginTop: 1,
+  },
+  shiftBtnRangeActive: {
+    color: 'rgba(255,255,255,0.8)',
+  },
+  alamatEditInput: {
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
+    borderColor: Colors.border + '35',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    fontSize: 13,
+    color: Colors.text,
+    minHeight: 60,
+    textAlignVertical: 'top',
+    marginBottom: Spacing.xs,
+  },
+  alamatEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.xs,
+  },
+  alamatEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  alamatEditBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  alamatEditCancelBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border + '35',
+    marginRight: Spacing.sm,
+  },
+  alamatEditCancelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textMuted,
+  },
+  alamatEditSaveBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.primary,
+  },
+  alamatEditSaveText: {
+    fontSize: 12,
+    fontWeight: '600',
     color: '#fff',
   },
 });

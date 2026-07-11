@@ -48,3 +48,18 @@ Endpoint yang tersedia: lihat `docs/api-spec.md`
 - `kasir` — konfirmasi booking, proses transaksi (akses via web)
 - `admin` — kelola data master, shift karyawan (akses via web)
 - `owner` — laporan keuangan, audit log (akses via web)
+
+## Alur Laundry Kiloan — LOCKED
+
+Flow laundry kiloan (14 status) sudah finalized dan **LOCKED**.
+
+Aturan:
+- ❌ Jangan ubah status, transisi, atau urutan alur kiloan yang sudah ada
+- ❌ Jangan tambah status baru di tengah alur kiloan
+- ✅ Jika ingin menambah jenis layanan baru (satuan, express, dll), buat alur terpisah — jangan potong alur kiloan
+- ✅ Bug fix pada implementasi alur kiloan diperbolehkan, asalkan tidak mengubah state machine
+
+Referensi:
+- Dokumentasi lengkap alur: `docs/alur-kiloan.md`
+- State machine (source of truth): `backend/src/modules/pemesanan/services/pemesanan.service.js` method `_getValidTransitions`
+- Kolom terkait pengiriman: `tanggal_pengiriman`, `shift_pengiriman` (migration `006`)

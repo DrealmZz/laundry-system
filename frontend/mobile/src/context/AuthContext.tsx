@@ -4,10 +4,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 type User = { 
   id: number; 
   nama_lengkap: string; 
+  username?: string;
   email: string; 
   role: string; 
   alamat?: string;
   no_hp?: string;
+  password_reset_required?: boolean;
 };
 type AuthContextType = {
   user: User | null;
@@ -45,6 +47,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } catch {
             // Data user corrupt, abaikan
           }
+        }
+        // Auto-refresh dari server untuk fix corrupted data di AsyncStorage
+        if (t) {
+          import('../services/api')
+            .then(({ api }) => api.getProfile())
+            .then((userData) => {
+              if (userData) {
+                setUser(userData as User);
+                AsyncStorage.setItem('user', JSON.stringify(userData));
+              }
+            })
+            .catch(() => {});
         }
       })
       .catch(() => {

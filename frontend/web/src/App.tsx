@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Transaction, Booking, Employee, Service, Task, ShiftBlock, User } from './types';
+import { Transaction, Booking, Employee, Service, Task, ShiftBlock, User, FinanceReport, ReportSummary, ReportPeriod, Customer, Machine, OperationalCost, ProfitLossReport, SalesTarget, ShiftPerformanceReport } from './types';
 import {
   initialTransactions,
   initialBookings,
@@ -24,10 +24,15 @@ import ConfirmBookings from './components/ConfirmBookings';
 import ShiftManagement from './components/ShiftManagement';
 import EmployeeDirectory from './components/EmployeeDirectory';
 import ServiceManagement from './components/ServiceManagement';
+import MachineManagement from './components/MachineManagement';
+import AuditLogViewer from './components/AuditLogViewer';
 import OwnerDashboard from './components/OwnerDashboard';
+import OwnerFinanceReport from './components/OwnerFinanceReport';
+import OwnerShiftPerformance from './components/OwnerShiftPerformance';
 import DailyRecap from './components/DailyRecap';
 import CustomerDirectory from './components/CustomerDirectory';
 import LoginPage from './components/LoginPage';
+import ToastContainer, { showToast } from './components/Toast';
 
 // ── Mapping Functions ──────────────────────────────────────
 function mapBookingStatus(status: string): Booking['status'] {
@@ -65,8 +70,11 @@ function mapBookingFromBackend(b: any): Booking {
     icon: b.jenis_pencucian === 'kiloan' ? '📦' : '🪙',
     berat_kg: b.berat_kg || null,
     status_pesanan_raw: b.status_pesanan || '',
+    jenis_pencucian: b.jenis_pencucian || '',
     tanggal_pengiriman: b.tanggal_pengiriman || null,
     shift_pengiriman: b.shift_pengiriman || null,
+    harga: parseFloat(b.harga) || 0,
+    metode_pengambilan: b.metode_pengambilan || 'ambil_sendiri',
   };
 }
 
@@ -81,19 +89,21 @@ function mapTransactionStatus(status: string): Transaction['status'] {
 
 function mapTransactionFromBackend(t: any): Transaction {
   const d = new Date(t.tanggal_transaksi);
+  const jenisLayanan = t.jenis_layanan || t.jenis_pencucian || '';
   return {
     id: t.nomor_struk || String(t.id_transaksi ?? ''),
-    customerName: t.nama_customer || 'Customer',
-    customerInitial: (t.nama_customer || 'C')[0].toUpperCase(),
+    id_transaksi: t.id_transaksi ? Number(t.id_transaksi) : undefined,
+    customerName: t.customer_nama || t.nama_customer || 'Customer',
+    customerInitial: (t.customer_nama || t.nama_customer || 'C')[0].toUpperCase(),
     serviceName: t.nama_layanan || '',
-    serviceType: t.jenis_layanan === 'kiloan' ? 'Kiloan' : 'Koin',
+    serviceType: jenisLayanan === 'kiloan' ? 'Kiloan' : 'Koin',
     weightOrQty: t.berat_kg || 1,
     amount: parseFloat(t.total) || 0,
     status: mapTransactionStatus(t.status_pembayaran),
     time: d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
     date: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
     paymentMethod: t.metode_pembayaran === 'qris' ? 'QRIS' : 'Cash',
-    cashierName: t.nama_karyawan || 'Kasir',
+    cashierName: t.karyawan_nama || t.nama_karyawan || 'Kasir',
   };
 }
 
@@ -118,8 +128,21 @@ function mapServiceFromBackend(s: any): Service {
     price: parseFloat(s.harga) || 0,
     unit: s.jenis_layanan === 'kiloan' ? 'kg' : 'token',
     duration: `${s.estimasi_waktu || 0} menit`,
-    status: true,
+    status: s.status_layanan !== false,
     packageType: s.jenis_layanan === 'kiloan' ? 'Kiloan' : 'Koin',
+  };
+}
+
+function mapMachineFromBackend(m: any): Machine {
+  return {
+    id: String(m.id_mesin ?? ''),
+    kode_mesin: m.kode_mesin || '',
+    nama_mesin: m.nama_mesin || '',
+    tipe_mesin: m.tipe_mesin || 'pencucian',
+    status_mesin: m.status_mesin || 'tersedia',
+    kapasitas_kg: m.kapasitas_kg ?? null,
+    konsumsi_kwh: m.konsumsi_kwh ? parseFloat(m.konsumsi_kwh) : null,
+    penggunaan_air_liter: m.penggunaan_air_liter ? parseFloat(m.penggunaan_air_liter) : null,
   };
 }
 
@@ -160,7 +183,11 @@ export default function App() {
   // Auth state — prioritaskan URL path, fallback localStorage
   const pathInfo = parsePath();
   const [user, setUser] = useState<User | null>(() => {
-    if (pathInfo.role) return createRoleUser(pathInfo.role);
+    if (pathInfo.role) {
+      const roleToken = localStorage.getItem(`lw_token_${pathInfo.role}`);
+      if (roleToken) return createRoleUser(pathInfo.role);
+      return null;
+    }
     const saved = localStorage.getItem('lw_user');
     if (saved) {
       try { return JSON.parse(saved); } catch { return null; }
@@ -184,6 +211,7 @@ export default function App() {
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
   const [services, setServices] = useState<Service[]>(initialServices);
+  const [machines, setMachines] = useState<Machine[]>([]);
   const [tasks, setTasks] = useState<Task[]>(() => {
     const saved = localStorage.getItem('lw_tasks');
     return saved ? JSON.parse(saved) : initialTasks;
@@ -191,6 +219,30 @@ export default function App() {
   const [shiftBlocks, setShiftBlocks] = useState<ShiftBlock[]>(initialShiftBlocks);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [authRole, setAuthRole] = useState<string | null>(() => localStorage.getItem('lw_auth_role'));
+  const [dataLoading, setDataLoading] = useState(true);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // Report states (owner)
+  const [reportFinance, setReportFinance] = useState<FinanceReport | null>(null);
+  const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
+  const [reportProfitLoss, setReportProfitLoss] = useState<ProfitLossReport | null>(null);
+  const [operationalCosts, setOperationalCosts] = useState<OperationalCost[]>([]);
+  const [salesTarget, setSalesTarget] = useState<SalesTarget | null>(null);
+  const [reportShiftPerformance, setReportShiftPerformance] = useState<ShiftPerformanceReport | null>(null);
+  const [reportPeriod, setReportPeriod] = useState<ReportPeriod>('bulan_ini');
+
+  function getDateRange(period: ReportPeriod): { start_date: string; end_date: string } {
+    const now = new Date();
+    const end = now.toISOString().split('T')[0];
+    let start: Date;
+    switch (period) {
+      case 'hari_ini': start = now; break;
+      case 'minggu_ini': start = new Date(now); start.setDate(now.getDate() - 7); break;
+      case 'bulan_ini': start = new Date(now); start.setDate(1); break;
+      case 'tahun_ini': start = new Date(now); start.setMonth(0, 1); break;
+    }
+    return { start_date: start!.toISOString().split('T')[0], end_date: end };
+  }
 
   // ── Sync user & tasks to localStorage ──
   useEffect(() => {
@@ -211,14 +263,32 @@ export default function App() {
 
   // ── Data Fetching ──
   const fetchData = useCallback(async () => {
-    if (!token) return;
+    if (!token) { setDataLoading(false); return; }
+    setDataLoading(true);
     try {
-      const [bookingsRes, txRes, empRes, svcRes] = await Promise.all([
+      const calls: Promise<any>[] = [
         apiRequest('/pemesanan').catch(() => null),
         apiRequest('/transaksi').catch(() => null),
         authRole === 'admin' ? apiRequest('/users/karyawan').catch(() => null) : Promise.resolve(null),
         apiRequest('/services').catch(() => null),
-      ]);
+        authRole !== 'owner' ? apiRequest('/users/customers').catch(() => null) : Promise.resolve(null),
+        authRole === 'admin' ? apiRequest('/mesin').catch(() => null) : Promise.resolve(null),
+      ];
+
+      if (authRole === 'owner') {
+        const { start_date, end_date } = getDateRange(reportPeriod);
+        const periode = end_date.slice(0, 7);
+        calls.push(
+          apiRequest(`/reports/finance?start_date=${start_date}&end_date=${end_date}`).catch(() => null),
+          apiRequest(`/reports/summary?start_date=${start_date}&end_date=${end_date}`).catch(() => null),
+          apiRequest(`/reports/profit-loss?start_date=${start_date}&end_date=${end_date}`).catch(() => null),
+          apiRequest(`/reports/operational-costs?start_date=${start_date}&end_date=${end_date}`).catch(() => null),
+          apiRequest(`/reports/sales-target?periode=${periode}`).catch(() => null),
+          apiRequest(`/reports/shift-performance?start_date=${start_date}&end_date=${end_date}`).catch(() => null),
+        );
+      }
+
+      const [bookingsRes, txRes, empRes, svcRes, custRes, machinesRes, reportFinanceRes, reportSummaryRes, reportProfitLossRes, operationalCostsRes, salesTargetRes, shiftPerformanceRes] = await Promise.all(calls);
 
       if (bookingsRes?.data) {
         const items = bookingsRes.data.items || bookingsRes.data;
@@ -236,10 +306,34 @@ export default function App() {
         const items = svcRes.data.items || svcRes.data;
         if (Array.isArray(items)) setServices(items.map(mapServiceFromBackend));
       }
+      if (machinesRes?.data) {
+        const items = machinesRes.data.items || machinesRes.data;
+        if (Array.isArray(items)) setMachines(items.map(mapMachineFromBackend));
+      }
+      if (custRes?.data) {
+        const items = custRes.data.items || custRes.data;
+        if (Array.isArray(items)) setCustomers(items.map((c: any) => ({
+          id_customer: c.id_customer,
+          nama_lengkap: c.nama_lengkap || '',
+          username: c.username || '',
+          no_hp: c.no_hp || '',
+          email: c.email || '',
+          alamat: c.alamat || '',
+          status_akun: c.status_akun || 'aktif',
+        })));
+      }
+      if (reportFinanceRes?.data) setReportFinance(reportFinanceRes.data as FinanceReport);
+      if (reportSummaryRes?.data) setReportSummary(reportSummaryRes.data as ReportSummary);
+      if (reportProfitLossRes?.data) setReportProfitLoss(reportProfitLossRes.data as ProfitLossReport);
+      if (operationalCostsRes?.data && Array.isArray(operationalCostsRes.data)) setOperationalCosts(operationalCostsRes.data as OperationalCost[]);
+      if (salesTargetRes?.data) setSalesTarget(salesTargetRes.data as SalesTarget);
+      if (shiftPerformanceRes?.data) setReportShiftPerformance(shiftPerformanceRes.data as ShiftPerformanceReport);
     } catch (err) {
       console.error('Error fetching data:', err);
+    } finally {
+      setDataLoading(false);
     }
-  }, [token, authRole]);
+  }, [token, authRole, reportPeriod]);
 
   useEffect(() => {
     fetchData();
@@ -324,41 +418,57 @@ export default function App() {
   };
 
   // ── Transaction Handler ──
-  const handleAddTransaction = (newTx: Omit<Transaction, 'id' | 'time' | 'date'>): string => {
-    const nextNum = transactions.length + 1;
-    const paddingStr = nextNum.toString().padStart(3, '0');
-    const newId = `#LW-2026-${paddingStr}`;
+  const handleAddTransaction = async (payload: {
+    nama_lengkap: string;
+    no_hp: string;
+    id_layanan: number;
+    berat_kg: number;
+    jenis_pencucian: string;
+    metode_pengambilan: string;
+    metode_pembayaran: string;
+    alamat?: string;
+    password?: string;
+    serviceName: string;
+    serviceType: string;
+    cashierName: string;
+  }): Promise<string> => {
+    const res = await apiRequest('/transaksi/walk-in', {
+      method: 'POST',
+      body: JSON.stringify({
+        nama_lengkap: payload.nama_lengkap,
+        no_hp: payload.no_hp,
+        id_layanan: payload.id_layanan,
+        berat_kg: payload.berat_kg,
+        jenis_pencucian: payload.jenis_pencucian,
+        metode_pengambilan: payload.metode_pengambilan,
+        metode_pembayaran: payload.metode_pembayaran,
+        alamat: payload.alamat,
+        password: payload.password,
+      }),
+    });
 
+    const d = res.data;
     const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
     const createdTx: Transaction = {
-      id: newId,
-      customerName: newTx.customerName,
-      customerInitial: newTx.customerInitial,
-      serviceName: newTx.serviceName,
-      serviceType: newTx.serviceType,
-      weightOrQty: newTx.weightOrQty,
-      amount: newTx.amount,
-      status: newTx.status,
+      id: d.nomor_struk,
+      id_transaksi: d.id_transaksi,
+      customerName: payload.nama_lengkap,
+      customerInitial: payload.nama_lengkap.substring(0, 2).toUpperCase(),
+      serviceName: payload.serviceName,
+      serviceType: payload.serviceType as Transaction['serviceType'],
+      weightOrQty: payload.berat_kg,
+      amount: d.total,
+      status: 'Selesai',
       time: timeStr,
       date: dateStr,
-      paymentMethod: newTx.paymentMethod,
-      cashierName: newTx.cashierName
+      paymentMethod: payload.metode_pembayaran === 'qris' ? 'QRIS' : 'Cash',
+      cashierName: payload.cashierName,
     };
 
     setTransactions(prev => [createdTx, ...prev]);
-
-    // Background API call (fire-and-forget)
-    apiRequest('/transaksi', {
-      method: 'POST',
-      body: JSON.stringify({
-        id_pemesanan: 1,
-        metode_pembayaran: newTx.paymentMethod === 'QRIS' ? 'qris' : 'cash',
-      }),
-    }).then(() => fetchData()).catch(console.error);
-
-    return newId;
+    return d.nomor_struk;
   };
 
   // ── Local state update helper (for demo without backend) ──
@@ -370,66 +480,46 @@ export default function App() {
 
   // ── Booking Handlers ──
   const handleConfirmBooking = async (id: string) => {
-    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+    if (!token || authRole !== 'admin') {
       updateLocalBooking(id, { status_pesanan_raw: 'disetujui', status: 'Disetujui' });
-      alert('Booking berhasil dikonfirmasi!');
+      showToast('Booking berhasil dikonfirmasi!');
       return;
     }
     try {
-      await apiRequest(`/pemesanan/${id}/status`, {
+      await apiRequest(`/pemesanan/${id}/approve`, {
         method: 'PATCH',
-        body: JSON.stringify({ status_pesanan: 'disetujui' }),
       });
       await fetchData();
-      alert('Booking berhasil dikonfirmasi!');
+      showToast('Booking berhasil dikonfirmasi!');
     } catch (error: any) {
       console.error('Error confirming booking:', error);
-      alert(error.message || 'Gagal mengkonfirmasi booking');
-    }
-  };
-
-  const handleApproveOrder = async (id: string) => {
-    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
-      updateLocalBooking(id, { status_pesanan_raw: 'disetujui', status: 'Disetujui' });
-      alert('Pesanan berhasil disetujui oleh kasir.');
-      return;
-    }
-    try {
-      await apiRequest(`/pemesanan/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status_pesanan: 'disetujui' }),
-      });
-      await fetchData();
-      alert('Pesanan berhasil disetujui oleh kasir.');
-    } catch (error: any) {
-      console.error('Error approving order:', error);
-      alert(error.message || 'Gagal menyetujui pesanan');
+      showToast(error.message || 'Gagal mengkonfirmasi booking', 'error');
     }
   };
 
   const handleRejectBooking = async (id: string, reason?: string) => {
-    if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
+    if (!token || authRole !== 'admin') {
       updateLocalBooking(id, { status_pesanan_raw: 'pesanan ditolak', status: 'Tolak' });
-      alert('Booking berhasil ditolak!');
+      showToast('Booking berhasil ditolak!');
       return;
     }
     try {
-      await apiRequest(`/pemesanan/${id}/cancel`, {
+      await apiRequest(`/pemesanan/${id}/reject`, {
         method: 'PATCH',
         body: JSON.stringify({ catatan: reason || 'Ditolak oleh admin' }),
       });
       await fetchData();
-      alert('Booking berhasil ditolak!');
+      showToast('Booking berhasil ditolak!');
     } catch (error: any) {
       console.error('Error rejecting booking:', error);
-      alert(error.message || 'Gagal menolak booking');
+      showToast(error.message || 'Gagal menolak booking', 'error');
     }
   };
 
   const handleConfirmPickup = async (id: string) => {
     if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
       updateLocalBooking(id, { status_pesanan_raw: 'penjemputan', status: 'Dijemput' });
-      alert('Konfirmasi jemput berhasil!');
+      showToast('Konfirmasi jemput berhasil!');
       return;
     }
     try {
@@ -437,17 +527,17 @@ export default function App() {
         method: 'PATCH',
       });
       await fetchData();
-      alert('Konfirmasi jemput berhasil!');
+      showToast('Konfirmasi jemput berhasil!');
     } catch (error: any) {
       console.error('Error confirming pickup:', error);
-      alert(error.message || 'Gagal konfirmasi jemput');
+      showToast(error.message || 'Gagal konfirmasi jemput', 'error');
     }
   };
 
   const handleConfirmClothes = async (id: string) => {
     if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
       updateLocalBooking(id, { status_pesanan_raw: 'penimbangan', status: 'Dijemput' });
-      alert('Konfirmasi pakaian diterima berhasil!');
+      showToast('Konfirmasi pakaian diterima berhasil!');
       return;
     }
     try {
@@ -455,17 +545,17 @@ export default function App() {
         method: 'PATCH',
       });
       await fetchData();
-      alert('Konfirmasi pakaian diterima berhasil!');
+      showToast('Konfirmasi pakaian diterima berhasil!');
     } catch (error: any) {
       console.error('Error confirming clothes:', error);
-      alert(error.message || 'Gagal konfirmasi pakaian');
+      showToast(error.message || 'Gagal konfirmasi pakaian', 'error');
     }
   };
 
   const handleWeigh = async (id: string, berat_kg: number) => {
     if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
       updateLocalBooking(id, { status_pesanan_raw: 'menunggu pembayaran', status: 'Diproses', berat_kg });
-      alert('Berat berhasil diinput!');
+      showToast('Berat berhasil diinput!');
       return;
     }
     try {
@@ -474,17 +564,17 @@ export default function App() {
         body: JSON.stringify({ berat_kg }),
       });
       await fetchData();
-      alert('Berat berhasil diinput!');
+      showToast('Berat berhasil diinput!');
     } catch (error: any) {
       console.error('Error weighing:', error);
-      alert(error.message || 'Gagal input berat');
+      showToast(error.message || 'Gagal input berat', 'error');
     }
   };
 
   const handleUpdateStatus = async (id: string, status: string) => {
     if (!token || (authRole !== 'admin' && authRole !== 'kasir')) {
       updateLocalBooking(id, { status_pesanan_raw: status, status: mapBookingStatus(status) });
-      alert(`Status berhasil diubah ke '${status}'!`);
+      showToast(`Status berhasil diubah ke '${status}'!`);
       return;
     }
     try {
@@ -493,10 +583,28 @@ export default function App() {
         body: JSON.stringify({ status_pesanan: status }),
       });
       await fetchData();
-      alert(`Status berhasil diubah ke '${status}'!`);
+      showToast(`Status berhasil diubah ke '${status}'!`);
     } catch (error: any) {
       console.error('Error updating status:', error);
-      alert(error.message || 'Gagal mengubah status');
+      showToast(error.message || 'Gagal mengubah status', 'error');
+    }
+  };
+
+  const handlePayKoin = async (id: string, metode: string) => {
+    if (!token) {
+      showToast('Payment processed locally (demo mode).', 'info');
+      return;
+    }
+    try {
+      await apiRequest('/transaksi', {
+        method: 'POST',
+        body: JSON.stringify({ id_pemesanan: id, metode_pembayaran: metode }),
+      });
+      await fetchData();
+      showToast('Pembayaran koin berhasil!');
+    } catch (error: any) {
+      console.error('Error processing koin payment:', error);
+      showToast(error.message || 'Gagal memproses pembayaran koin', 'error');
     }
   };
 
@@ -534,25 +642,88 @@ export default function App() {
   // ── Service Handlers ──
   const handleToggleServiceStatus = async (id: string) => {
     try {
+      const svc = services.find(s => s.id === id);
       await apiRequest(`/services/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ status_layanan: true }),
+        body: JSON.stringify({ status_layanan: !(svc?.status ?? true) }),
       });
       await fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error toggling service status:', error);
+      showToast('Gagal mengubah status layanan: ' + (error.message || 'Terjadi kesalahan'), 'error');
     }
   };
 
-  const handleUpdateServicePrice = async (id: string, price: number) => {
+  const handleUpdateService = async (id: string, data: { name?: string; duration?: string; price?: number }) => {
     try {
+      const body: Record<string, any> = {};
+      if (data.name !== undefined) body.nama_layanan = data.name;
+      if (data.duration !== undefined) {
+        const minutes = parseInt(data.duration.replace(/\D/g, ''), 10);
+        if (!isNaN(minutes) && minutes > 0) body.estimasi_waktu = minutes;
+      }
+      if (data.price !== undefined) body.harga = data.price;
       await apiRequest(`/services/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ harga: price }),
+        body: JSON.stringify(body),
       });
       await fetchData();
-    } catch (error) {
-      console.error('Error updating service price:', error);
+    } catch (error: any) {
+      console.error('Error updating service:', error);
+      showToast('Gagal mengubah layanan: ' + (error.message || 'Terjadi kesalahan'), 'error');
+    }
+  };
+
+  // ── Machine Handlers ──
+  const handleCreateMachine = async (data: Partial<Machine>) => {
+    try {
+      await apiRequest('/mesin', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      await fetchData();
+      showToast('Mesin berhasil ditambahkan', 'success');
+    } catch (error: any) {
+      console.error('Error creating machine:', error);
+      showToast('Gagal menambah mesin: ' + (error.message || 'Terjadi kesalahan'), 'error');
+    }
+  };
+
+  const handleUpdateMachine = async (id: string, data: Partial<Machine>) => {
+    try {
+      await apiRequest(`/mesin/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      await fetchData();
+      showToast('Mesin berhasil diupdate', 'success');
+    } catch (error: any) {
+      console.error('Error updating machine:', error);
+      showToast('Gagal mengubah mesin: ' + (error.message || 'Terjadi kesalahan'), 'error');
+    }
+  };
+
+  const handleDeleteMachine = async (id: string) => {
+    try {
+      await apiRequest(`/mesin/${id}`, { method: 'DELETE' });
+      await fetchData();
+      showToast('Mesin berhasil dihapus', 'success');
+    } catch (error: any) {
+      console.error('Error deleting machine:', error);
+      showToast('Gagal menghapus mesin: ' + (error.message || 'Terjadi kesalahan'), 'error');
+    }
+  };
+
+  const handleToggleMachineStatus = async (id: string, status: 'tersedia' | 'dipakai' | 'perbaikan') => {
+    try {
+      await apiRequest(`/mesin/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status_mesin: status }),
+      });
+      await fetchData();
+    } catch (error: any) {
+      console.error('Error toggling machine status:', error);
+      showToast('Gagal mengubah status mesin: ' + (error.message || 'Terjadi kesalahan'), 'error');
     }
   };
 
@@ -639,6 +810,46 @@ export default function App() {
     }
   };
 
+  // ── Owner: Operational Cost & Sales Target Handlers ──
+  const handleAddOperationalCost = async (payload: { tanggal?: string; kategori: string; jumlah: number; deskripsi?: string }) => {
+    try {
+      await apiRequest('/reports/operational-costs', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      await fetchData();
+      showToast('Biaya operasional berhasil ditambahkan!');
+    } catch (error: any) {
+      console.error('Error adding operational cost:', error);
+      showToast(error.message || 'Gagal menambah biaya operasional', 'error');
+    }
+  };
+
+  const handleDeleteOperationalCost = async (id: number) => {
+    try {
+      await apiRequest(`/reports/operational-costs/${id}`, { method: 'DELETE' });
+      await fetchData();
+      showToast('Biaya operasional berhasil dihapus!');
+    } catch (error: any) {
+      console.error('Error deleting operational cost:', error);
+      showToast(error.message || 'Gagal menghapus biaya operasional', 'error');
+    }
+  };
+
+  const handleSetSalesTarget = async (periode: string, target_amount: number) => {
+    try {
+      await apiRequest('/reports/sales-target', {
+        method: 'PUT',
+        body: JSON.stringify({ periode, target_amount }),
+      });
+      await fetchData();
+      showToast('Target penjualan berhasil disimpan!');
+    } catch (error: any) {
+      console.error('Error setting sales target:', error);
+      showToast(error.message || 'Gagal menyimpan target penjualan', 'error');
+    }
+  };
+
   // ── Content View Router ──
   const renderContentView = () => {
     if (selectedReceiptId) {
@@ -658,21 +869,23 @@ export default function App() {
               onDeleteTask={handleDeleteTask}
               onSelectReceipt={setSelectedReceiptId}
               onNavigateToNewTransaction={() => setActiveTab('new-transaction')}
+              loading={dataLoading}
             />
           );
         case 'confirm-orders':
-          return <CashierConfirmOrders bookings={bookings} onApproveOrder={handleApproveOrder} onConfirmPickup={handleConfirmPickup} onConfirmClothes={handleConfirmClothes} onWeigh={handleWeigh} onUpdateStatus={handleUpdateStatus} />;
+          return <CashierConfirmOrders bookings={bookings} onConfirmPickup={handleConfirmPickup} onConfirmClothes={handleConfirmClothes} onWeigh={handleWeigh} onUpdateStatus={handleUpdateStatus} onPayKoin={handlePayKoin} loading={dataLoading} />;
         case 'new-transaction':
           return (
             <NewTransaction
               services={services.filter(s => s.status)}
+              customers={customers}
               onAddTransaction={handleAddTransaction}
               onSelectReceipt={setSelectedReceiptId}
               onNavigateToDashboard={() => setActiveTab('dashboard')}
             />
           );
         case 'transactions':
-          return <TransactionsHistory transactions={transactions} onSelectReceipt={setSelectedReceiptId} />;
+          return <TransactionsHistory transactions={transactions} onSelectReceipt={setSelectedReceiptId} loading={dataLoading} />;
         case 'rekap':
           return <DailyRecap transactions={transactions} />;
         case 'machines':
@@ -704,8 +917,10 @@ export default function App() {
               onConfirmBooking={handleConfirmBooking}
               onRejectBooking={handleRejectBooking}
               onConfirmPickup={handleConfirmPickup}
+              onConfirmClothes={handleConfirmClothes}
               onWeigh={handleWeigh}
               onUpdateStatus={handleUpdateStatus}
+              userRole={role}
             />
           );
         case 'shifts':
@@ -730,20 +945,75 @@ export default function App() {
             <ServiceManagement
               services={services}
               onToggleServiceStatus={handleToggleServiceStatus}
-              onUpdateServicePrice={handleUpdateServicePrice}
+              onUpdateService={handleUpdateService}
             />
           );
+        case 'machines':
+          return (
+            <MachineManagement
+              machines={machines}
+              onCreateMachine={handleCreateMachine}
+              onUpdateMachine={handleUpdateMachine}
+              onDeleteMachine={handleDeleteMachine}
+              onToggleStatus={handleToggleMachineStatus}
+            />
+          );
+        case 'audit-logs':
+          return <AuditLogViewer />;
         default:
           return <div className="text-xs text-ink-muted">Admin Tab Belum Terintegrasi</div>;
       }
     }
 
     if (role === 'owner') {
+      const handlePeriodChange = (period: ReportPeriod) => {
+        setReportPeriod(period);
+      };
+
+      const handleRefresh = () => {
+        fetchData();
+      };
+
       switch (activeTab) {
         case 'dashboard':
+          return (
+            <OwnerDashboard
+              transactions={transactions}
+              reportFinance={reportFinance}
+              reportSummary={reportSummary}
+              salesTarget={salesTarget}
+              reportPeriod={reportPeriod}
+              onPeriodChange={handlePeriodChange}
+              onRefresh={handleRefresh}
+              onSetSalesTarget={handleSetSalesTarget}
+              loading={dataLoading}
+            />
+          );
         case 'finance':
+          return (
+            <OwnerFinanceReport
+              transactions={transactions}
+              reportFinance={reportFinance}
+              reportProfitLoss={reportProfitLoss}
+              operationalCosts={operationalCosts}
+              reportPeriod={reportPeriod}
+              onPeriodChange={handlePeriodChange}
+              onRefresh={handleRefresh}
+              onAddOperationalCost={handleAddOperationalCost}
+              onDeleteOperationalCost={handleDeleteOperationalCost}
+              loading={dataLoading}
+            />
+          );
         case 'performance':
-          return <OwnerDashboard transactions={transactions} />;
+          return (
+            <OwnerShiftPerformance
+              reportShiftPerformance={reportShiftPerformance}
+              reportPeriod={reportPeriod}
+              onPeriodChange={handlePeriodChange}
+              onRefresh={handleRefresh}
+              loading={dataLoading}
+            />
+          );
         default:
           return <div className="text-xs text-ink-muted">Owner Tab Belum Terintegrasi</div>;
       }
@@ -752,8 +1022,13 @@ export default function App() {
     return null;
   };
 
-  const pendingBookingsCount = bookings.filter(b => b.status === 'Menunggu').length;
+  const pendingBookingsCount = bookings.filter(b => b.status_pesanan_raw === 'menunggu konfirmasi').length;
+  const kasirActiveCount = bookings.filter(b => ['menunggu konfirmasi', 'disetujui', 'penjemputan', 'penimbangan', 'menunggu pembayaran', 'sudah dibayar', 'diproses', 'sedang di cuci', 'sedang di keringkan', 'sedang di setrika', 'pencucian selesai'].includes(b.status_pesanan_raw || '')).length;
   const verifikasiCount = bookings.filter(b => b.status_pesanan_raw === 'sudah dibayar').length;
+
+  if (!token && pathInfo.role && !user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   if (!user && !parsePath().role) {
     return <LoginPage onLogin={handleLogin} />;
@@ -761,11 +1036,13 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-page flex font-sans antialiased text-ink w-full overflow-hidden">
+      <ToastContainer />
       <Sidebar
         currentRole={role}
         activeTab={activeTab}
         onTabChange={(tab) => { window.history.pushState(null, '', `/${role}/${tab}`); setActiveTab(tab); }}
         pendingBookingsCount={pendingBookingsCount}
+        kasirActiveCount={kasirActiveCount}
         verifikasiCount={verifikasiCount}
         user={user}
         onLogout={handleLogout}

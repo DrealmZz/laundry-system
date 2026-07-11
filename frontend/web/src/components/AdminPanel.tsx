@@ -50,23 +50,58 @@ export default function AdminPanel({
   const pendingBookings = bookings.filter(b => b.status === 'Menunggu');
   const activeStaffCount = employees.filter(e => e.status === 'Aktif').length;
 
-  // Chart 1: Income Analysis (Weekly)
-  const incomeData = [
-    { name: 'Senin', amount: 150000 },
-    { name: 'Selasa', amount: 280000 },
-    { name: 'Rabu', amount: 350000 },
-    { name: 'Kamis', amount: 300000 },
-    { name: 'Jumat', amount: 480000 },
-    { name: 'Sabtu', amount: 620000 },
-    { name: 'Minggu', amount: 750000 }
-  ];
+  // Chart 1: Income Analysis (Weekly) — from real transactions
+  const now = new Date();
+  const currentDay = now.getDay(); // 0=Minggu, 1=Senin, ..., 6=Sabtu
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
+  monday.setHours(0, 0, 0, 0);
 
-  // Chart 2: Booking Type Distribution
+  const daysToShow = currentDay === 0 ? 7 : currentDay;
+  const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+  const formatId = (d: Date) =>
+    d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' as const });
+
+  const incomeData = Array.from({ length: daysToShow }, (_, i) => {
+    const dayDate = new Date(monday);
+    dayDate.setDate(monday.getDate() + i);
+    const dateStr = formatId(dayDate);
+
+    return {
+      name: dayNames[i],
+      amount: confirmedTransactions
+        .filter(t => t.date === dateStr)
+        .reduce((s, t) => s + t.amount, 0),
+    };
+  });
+
+  // Chart 2: Booking Type Distribution — from real bookings
+  const kiloanCount = bookings.filter(b => !b.jenis_pencucian || b.jenis_pencucian === 'kiloan').length;
+  const koinCount = bookings.filter(b => b.jenis_pencucian === 'koin').length;
+  const totalBookingDist = bookings.length || 1;
   const bookingTypeData = [
-    { name: 'Cuci Kiloan', value: 45, color: '#0891b2' },
-    { name: 'Satuan Specialist', value: 30, color: '#1e40af' },
-    { name: 'Koin Self Service', value: 25, color: '#d4a843' }
-  ];
+    { name: 'Kiloan', value: Math.round(kiloanCount / totalBookingDist * 100), color: '#0891b2' },
+    { name: 'Koin', value: Math.round(koinCount / totalBookingDist * 100), color: '#d4a843' },
+  ]    .filter(d => d.value > 0);
+  if (bookingTypeData.length === 0) {
+    bookingTypeData.push({ name: 'Belum ada data', value: 100, color: '#94a3b8' });
+  }
+
+  // Trend badge: today vs yesterday
+  const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' as const });
+  const yesterdayDate = new Date(); yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterdayStr = yesterdayDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' as const });
+  const todayTotalRevenue = confirmedTransactions.filter(t => t.date === todayStr).reduce((s, t) => s + t.amount, 0);
+  const yesterdayTotalRevenue = confirmedTransactions.filter(t => t.date === yesterdayStr).reduce((s, t) => s + t.amount, 0);
+  const trendPercent = yesterdayTotalRevenue > 0
+    ? ((todayTotalRevenue - yesterdayTotalRevenue) / yesterdayTotalRevenue * 100).toFixed(1)
+    : todayTotalRevenue > 0 ? '+100.0' : '0.0';
+  const trendLabel = yesterdayTotalRevenue > 0 && todayTotalRevenue >= yesterdayTotalRevenue
+    ? `+${trendPercent}% vs Kemarin`
+    : yesterdayTotalRevenue > 0
+    ? `${trendPercent}% vs Kemarin`
+    : 'Hari pertama';
 
   return (
     <div className="space-y-6">
@@ -86,7 +121,7 @@ export default function AdminPanel({
             <p className="text-[10px] font-black text-teal-100 uppercase tracking-widest font-mono">Total Pendapatan</p>
             <h3 className="text-xl font-black text-white tracking-tight">Rp {totalRevenue.toLocaleString('id-ID')}</h3>
             <span className="text-[10px] text-white font-extrabold bg-white/25 px-2.5 py-0.5 rounded-full inline-block mt-1.5 backdrop-blur-md">
-              +12.4% vs Kemarin
+              {trendLabel}
             </span>
           </div>
           <div className="bg-white/20 text-white p-3 rounded-2xl border border-white/10 z-10 backdrop-blur-md">

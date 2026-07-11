@@ -1,17 +1,21 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors, Typography, Spacing } from '../constants/theme';
+import Icon from './Icon';
 
 interface EmptyStateProps {
-  icon?: string;
+  icon?: React.ReactNode;
+  iconName?: string;
   title: string;
   message?: string;
 }
 
-export default function EmptyState({ icon = '📭', title, message }: EmptyStateProps) {
+export default function EmptyState({ icon, iconName, title, message }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.icon}>{icon}</Text>
+      {icon}
+      {!icon && iconName && <Icon name={iconName} size={48} color={Colors.textMuted} style={styles.icon} />}
+      {!icon && !iconName && <Icon name="inbox" size={48} color={Colors.textMuted} style={styles.icon} />}
       <Text style={styles.title}>{title}</Text>
       {message && <Text style={styles.message}>{message}</Text>}
     </View>

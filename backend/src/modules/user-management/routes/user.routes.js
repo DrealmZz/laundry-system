@@ -5,7 +5,7 @@ const { protect, restrictTo } = require('../../../shared/middlewares/auth.middle
 
 router.use(protect);
 
-router.get('/customers', restrictTo('admin'), userController.getCustomers);
+router.get('/customers', restrictTo('admin', 'kasir'), userController.getCustomers);
 router.get('/karyawan', restrictTo('admin'), userController.getKaryawan);
 router.get('/owners', restrictTo('admin'), userController.getOwners);
 

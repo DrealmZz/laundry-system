@@ -8,9 +8,10 @@ router.use(protect);
 
 // Existing routes
 router.post('/', restrictTo(ROLES.KASIR), transaksiController.createTransaksi);
+router.post('/walk-in', restrictTo(ROLES.KASIR), transaksiController.createWalkInTransaksi);
 
 router.get('/', restrictTo(ROLES.KASIR, ROLES.ADMIN, ROLES.OWNER), transaksiController.getAllTransaksi);
-router.get('/daily-recap', restrictTo(ROLES.KASIR), transaksiController.getDailyRecap);
+router.get('/daily-recap', restrictTo(ROLES.KASIR, ROLES.ADMIN, ROLES.OWNER), transaksiController.getDailyRecap);
 router.get('/struk/:nomor_struk', restrictTo(ROLES.KASIR, ROLES.ADMIN), transaksiController.getTransaksiByStruk);
 router.get('/:id', restrictTo(ROLES.KASIR, ROLES.ADMIN, ROLES.OWNER), transaksiController.getTransaksiById);
 router.get('/:id/pdf', restrictTo(ROLES.KASIR, ROLES.ADMIN, ROLES.CUSTOMER), transaksiController.generatePDF);

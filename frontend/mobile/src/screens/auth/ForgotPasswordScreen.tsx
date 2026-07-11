@@ -42,16 +42,15 @@ export default function ForgotPasswordScreen({ navigation }: any) {
           <View style={styles.successIconBox}>
             <Text style={styles.successIcon}>{'\u2713'}</Text>
           </View>
-          <Text style={styles.successTitle}>Cek Email Anda</Text>
+          <Text style={styles.successTitle}>Hubungi Admin</Text>
           <Text style={styles.successDesc}>
-            Kami telah mengirim tautan reset password ke{'\n'}
-            <Text style={styles.successEmail}>{email}</Text>
+            Permintaan reset password telah dikirim ke admin.{'\n'}
+            Silakan hubungi admin laundry untuk mendapatkan{'\n'}
+            password baru Anda.
           </Text>
           <Text style={styles.successInfoText}>
-            Tidak menerima email? Cek folder spam atau{'\n'}
-            <Text style={styles.resendLink} onPress={handleSend}>
-              Kirim ulang
-            </Text>
+            Admin akan memberikan password sementara{'\n'}
+            yang dapat diubah setelah login.
           </Text>
           <TouchableOpacity
             style={styles.successBtn}
@@ -88,16 +87,17 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             </TouchableOpacity>
             <View style={styles.miniLogo}>
               <Image
-                source={require('../../../assets/logo_laundry.png')}
-                style={styles.miniLogoImg}
+                source={require('../../../assets/logo-laund-transparant.png')}
+                style={styles.miniLogoIcon}
                 resizeMode="contain"
               />
+              <Text style={styles.miniLogoText}>laundaja</Text>
             </View>
           </View>
 
           <Text style={styles.title}>Lupa Password</Text>
           <Text style={styles.subtitle}>
-            Masukkan email terdaftar, kami akan mengirimkan tautan reset password.
+            Masukkan email terdaftar, admin akan mereset password Anda.
           </Text>
         </View>
 
@@ -125,7 +125,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.sendBtnText}>Kirim Tautan Reset</Text>
+              <Text style={styles.sendBtnText}>Kirim Permintaan Reset</Text>
             )}
           </TouchableOpacity>
 
@@ -189,15 +189,20 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 18, color: '#fff' },
   miniLogo: {
-    width: 48,
-    height: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: BorderRadius.md,
     backgroundColor: 'rgba(255,255,255,0.90)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
-  miniLogoImg: { width: 44, height: 26 },
+  miniLogoIcon: { width: 24, height: 24, marginRight: 4, tintColor: '#23395B' },
+  miniLogoText: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#23395B',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+  },
   title: {
     fontSize: 20,
     fontWeight: '700',
@@ -299,7 +304,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: Spacing.sm,
   },
-  successEmail: { fontWeight: '700', color: Colors.text },
   successInfoText: {
     fontSize: 11,
     color: Colors.textMuted,
@@ -307,7 +311,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: Spacing.md,
   },
-  resendLink: { fontWeight: '700', color: Colors.primary },
   successBtn: {
     width: '100%',
     height: 48,

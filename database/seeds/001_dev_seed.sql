@@ -20,7 +20,8 @@ INSERT INTO customer (nama_lengkap, username, no_hp, email, password, alamat) VA
 INSERT INTO layanan (nama_layanan, jenis_layanan, harga, estimasi_waktu) VALUES
   ('Kiloan Reguler', 'kiloan', 7000, 480),
   ('Kiloan Express', 'kiloan', 12000, 240),
-  ('Koin Self-Service', 'koin', 15000, 60);
+  ('Koin Cuci Saja', 'koin', 10000, 45),
+  ('Koin Cuci + Kering', 'koin', 20000, 60);
 
 -- Mesin Cuci
 INSERT INTO mesin_cuci (kode_mesin, tipe_mesin, nama_mesin, status_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter) VALUES

@@ -9,10 +9,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '../../constants/theme';
 import EmptyState from '../../components/EmptyState';
+import Icon from '../../components/Icon';
 
 function formatTime(dateStr: string) {
   const date = new Date(dateStr);
@@ -30,7 +30,6 @@ function formatTime(dateStr: string) {
 }
 
 export default function NotificationScreen() {
-  const { token } = useAuth();
   const navigation = useNavigation();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -119,6 +118,9 @@ export default function NotificationScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Icon name="arrow-left" size={20} color={Colors.secondary} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifikasi</Text>
         {unreadCount > 0 && (
           <View style={styles.countBadge}>
@@ -137,9 +139,9 @@ export default function NotificationScreen() {
         }
         ListEmptyComponent={
           <EmptyState
-            icon="🔔"
+            iconName="bell"
             title="Tidak ada notifikasi"
-            subtitle="Notifikasi akan muncul di sini"
+            message="Notifikasi akan muncul di sini"
           />
         }
       />
@@ -162,15 +164,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xl,
+    paddingTop: 56,
     paddingBottom: Spacing.md,
-    backgroundColor: Colors.white,
+    backgroundColor: '#fff',
     ...Shadows.sm,
   },
+  backBtn: { width: 32 },
   headerTitle: {
-    fontSize: Typography.xl,
+    flex: 1,
+    fontSize: 20,
     fontWeight: '700',
     color: Colors.text,
+    textAlign: 'center',
   },
   countBadge: {
     backgroundColor: Colors.error,
@@ -182,15 +187,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   countText: {
-    color: Colors.white,
-    fontSize: Typography.xs,
+    color: '#fff',
+    fontSize: 11,
     fontWeight: '700',
   },
   list: {
     padding: Spacing.md,
   },
   card: {
-    backgroundColor: Colors.white,
+    backgroundColor: '#fff',
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
@@ -219,18 +224,18 @@ const styles = StyleSheet.create({
     marginRight: Spacing.xs,
   },
   title: {
-    fontSize: Typography.base,
+    fontSize: 15,
     fontWeight: '600',
     color: Colors.text,
     flex: 1,
   },
   time: {
-    fontSize: Typography.xs,
+    fontSize: 11,
     color: Colors.textMuted,
     marginLeft: Spacing.sm,
   },
   message: {
-    fontSize: Typography.sm,
+    fontSize: 13,
     color: Colors.textSecondary,
     lineHeight: 20,
   },
@@ -239,7 +244,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   linkText: {
-    fontSize: Typography.sm,
+    fontSize: 13,
     color: Colors.primary,
     fontWeight: '600',
   },

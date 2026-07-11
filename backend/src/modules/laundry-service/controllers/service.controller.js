@@ -31,7 +31,7 @@ exports.getServiceById = async (req, res, next) => {
 
 exports.createService = async (req, res, next) => {
   try {
-    const service = await serviceService.createService(req.body);
+    const service = await serviceService.createService(req.body, req.user);
 
     res.status(201).json({
       status: 'success',
@@ -45,7 +45,7 @@ exports.createService = async (req, res, next) => {
 
 exports.updateService = async (req, res, next) => {
   try {
-    const service = await serviceService.updateService(parseInt(req.params.id), req.body);
+    const service = await serviceService.updateService(parseInt(req.params.id), req.body, req.user);
 
     res.status(200).json({
       status: 'success',
@@ -59,7 +59,7 @@ exports.updateService = async (req, res, next) => {
 
 exports.deleteService = async (req, res, next) => {
   try {
-    await serviceService.deleteService(parseInt(req.params.id));
+    await serviceService.deleteService(parseInt(req.params.id), req.user);
 
     res.status(200).json({
       status: 'success',

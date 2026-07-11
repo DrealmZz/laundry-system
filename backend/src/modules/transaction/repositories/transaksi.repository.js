@@ -17,11 +17,11 @@ class TransaksiRepository {
               p.status_pesanan, p.berat_kg, p.jenis_pencucian, p.tanggal_pesanan,
               c.nama_lengkap AS customer_nama, c.no_hp AS customer_no_hp,
               k.nama_lengkap AS karyawan_nama,
-              l.nama_layanan, l.harga
+              l.nama_layanan, l.harga, l.jenis_layanan AS jenis_layanan
        FROM transaksi t
        JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
        JOIN customer c ON t.id_customer = c.id_customer
-       JOIN karyawan k ON t.id_karyawan = k.id_karyawan
+       LEFT JOIN karyawan k ON t.id_karyawan = k.id_karyawan
        JOIN layanan l ON p.id_layanan = l.id_layanan
        WHERE t.id_transaksi = $1`,
       [id]
@@ -35,11 +35,11 @@ class TransaksiRepository {
               p.status_pesanan, p.berat_kg, p.jenis_pencucian, p.tanggal_pesanan,
               c.nama_lengkap AS customer_nama, c.no_hp AS customer_no_hp,
               k.nama_lengkap AS karyawan_nama,
-              l.nama_layanan, l.harga
+              l.nama_layanan, l.harga, l.jenis_layanan AS jenis_layanan
        FROM transaksi t
        JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
        JOIN customer c ON t.id_customer = c.id_customer
-       JOIN karyawan k ON t.id_karyawan = k.id_karyawan
+       LEFT JOIN karyawan k ON t.id_karyawan = k.id_karyawan
        JOIN layanan l ON p.id_layanan = l.id_layanan
        WHERE t.nomor_struk = $1`,
       [nomor_struk]
@@ -50,13 +50,13 @@ class TransaksiRepository {
   async findAll({ id_customer, status_pembayaran, start_date, end_date, limit, offset } = {}) {
     let query = `SELECT t.*, 
                         p.status_pesanan, p.berat_kg, p.jenis_pencucian,
-                        c.nama_lengkap AS customer_nama,
+                        c.nama_lengkap AS customer_nama, c.nama_lengkap AS nama_customer,
                         k.nama_lengkap AS karyawan_nama,
-                        l.nama_layanan
+                        l.nama_layanan, l.jenis_layanan AS jenis_layanan
                  FROM transaksi t
                  JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
                  JOIN customer c ON t.id_customer = c.id_customer
-                 JOIN karyawan k ON t.id_karyawan = k.id_karyawan
+                 LEFT JOIN karyawan k ON t.id_karyawan = k.id_karyawan
                  JOIN layanan l ON p.id_layanan = l.id_layanan`;
     const params = [];
     const conditions = [];
@@ -208,14 +208,14 @@ class TransaksiRepository {
   async findByIdWithDetails(id) {
     const { rows } = await db.query(
       `SELECT t.*, 
-              p.status_pesanan, p.berat_kg, p.jenis_pencucian, p.tanggal_pesanan, p.shift,
-              c.nama_lengkap AS nama_customer, c.no_hp AS no_hp_customer, c.alamat AS alamat_customer,
-              k.nama_lengkap AS nama_karyawan,
-              l.nama_layanan, l.jenis_layanan, l.harga
+              p.status_pesanan, p.berat_kg, p.jenis_pencucian, p.tanggal_pesanan,
+              c.nama_lengkap AS customer_nama, c.no_hp AS customer_no_hp,
+              k.nama_lengkap AS karyawan_nama,
+              l.nama_layanan, l.harga, l.jenis_layanan AS jenis_layanan
        FROM transaksi t
        JOIN pemesanan p ON t.id_pemesanan = p.id_pemesanan
        JOIN customer c ON t.id_customer = c.id_customer
-       JOIN karyawan k ON t.id_karyawan = k.id_karyawan
+       LEFT JOIN karyawan k ON t.id_karyawan = k.id_karyawan
        JOIN layanan l ON p.id_layanan = l.id_layanan
        WHERE t.id_transaksi = $1`,
       [id]

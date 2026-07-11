@@ -32,6 +32,28 @@ class MachineRepository {
     return rows;
   }
 
+  async findAllWithCurrentBooking() {
+    const { rows } = await db.query(
+      `SELECT mc.*, bj.id_pemesanan, bj.jam_mulai, bj.status_pesanan AS booking_status,
+              bj.estimasi_waktu, bj.customer_nama
+       FROM mesin_cuci mc
+       LEFT JOIN LATERAL (
+         SELECT p.id_pemesanan, p.jam_mulai, p.status_pesanan,
+                l.estimasi_waktu, c.nama_lengkap AS customer_nama
+         FROM booking_mesin bm
+         JOIN pemesanan p ON bm.id_pemesanan = p.id_pemesanan
+         JOIN layanan l ON p.id_layanan = l.id_layanan
+         JOIN customer c ON p.id_customer = c.id_customer
+         WHERE bm.id_mesin = mc.id_mesin
+           AND p.status_pesanan NOT IN ('selesai', 'pesanan ditolak', 'pesanan dibatalkan')
+         ORDER BY p.tanggal_pesanan DESC, p.jam_mulai DESC
+         LIMIT 1
+       ) bj ON true
+       ORDER BY mc.kode_mesin ASC`,
+    );
+    return rows;
+  }
+
   async findByKode(kode_mesin) {
     const { rows } = await db.query(
       'SELECT * FROM mesin_cuci WHERE kode_mesin = $1',
@@ -50,13 +72,21 @@ class MachineRepository {
     return rows[0];
   }
 
-  async update(id, { nama_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter }) {
+  async update(id, { tipe_mesin, nama_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter }) {
     const { rows } = await db.query(
       `UPDATE mesin_cuci 
-       SET nama_mesin = $1, kapasitas_kg = $2, konsumsi_kwh = $3, penggunaan_air_liter = $4
-       WHERE id_mesin = $5
+       SET tipe_mesin = $1, nama_mesin = $2, kapasitas_kg = $3, konsumsi_kwh = $4, penggunaan_air_liter = $5
+       WHERE id_mesin = $6
        RETURNING *`,
-      [nama_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter, id]
+      [tipe_mesin, nama_mesin, kapasitas_kg, konsumsi_kwh, penggunaan_air_liter, id]
+    );
+    return rows[0];
+  }
+
+  async delete(id) {
+    const { rows } = await db.query(
+      'DELETE FROM mesin_cuci WHERE id_mesin = $1 RETURNING *',
+      [id]
     );
     return rows[0];
   }
