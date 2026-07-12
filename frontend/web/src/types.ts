@@ -42,7 +42,7 @@ export interface Employee {
   status: 'Aktif' | 'Cuti' | 'Nonaktif';
   joinDate: string;
   initial: string;
-  photoUrl: string;
+  photoUrl: string | null;
 }
 
 export interface Service {

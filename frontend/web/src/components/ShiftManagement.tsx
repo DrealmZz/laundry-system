@@ -72,13 +72,19 @@ export default function ShiftManagement({
                 key={employee.id}
                 className="flex items-center gap-2.5 p-2.5 rounded-xl border border-white/30 hover:border-teal/20 bg-white/15 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-white/30">
-                  <img
-                    src={employee.photoUrl}
-                    alt={employee.name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover"
-                  />
+                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-white/30 bg-white/25">
+                  {employee.photoUrl ? (
+                    <img
+                      src={employee.photoUrl}
+                      alt={employee.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-ink-muted">
+                      {employee.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold text-ink truncate">{employee.name}</p>

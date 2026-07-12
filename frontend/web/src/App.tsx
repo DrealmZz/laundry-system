@@ -116,7 +116,7 @@ function mapEmployeeFromBackend(e: any): Employee {
     status: e.status_akun === 'aktif' ? 'Aktif' : 'Nonaktif',
     joinDate: new Date(e.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
     initial: (e.nama_lengkap || 'XX').substring(0, 2).toUpperCase(),
-    photoUrl: '',
+    photoUrl: null,
   };
 }
 
@@ -609,7 +609,7 @@ export default function App() {
   };
 
   // ── Employee Handlers ──
-  const handleAddEmployee = async (empInput: Omit<Employee, 'id' | 'initial' | 'joinDate'>) => {
+  const handleAddEmployee = async (empInput: Omit<Employee, 'id' | 'initial' | 'joinDate'>, password: string) => {
     try {
       await apiRequest('/users/karyawan', {
         method: 'POST',
@@ -617,7 +617,7 @@ export default function App() {
           nama_lengkap: empInput.name,
           username: empInput.email.split('@')[0],
           email: empInput.email,
-          password: 'password123',
+          password,
           role: empInput.role === 'Admin Staff' ? 'admin' : 'kasir',
         }),
       });

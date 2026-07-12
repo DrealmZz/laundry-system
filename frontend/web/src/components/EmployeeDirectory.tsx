@@ -4,7 +4,7 @@ import { Plus, Search, Mail, Calendar, Trash2, Edit2, Sliders, Check, UserPlus }
 
 interface EmployeeDirectoryProps {
   employees: Employee[];
-  onAddEmployee: (employee: Omit<Employee, 'id' | 'initial' | 'joinDate'>) => void;
+  onAddEmployee: (employee: Omit<Employee, 'id' | 'initial' | 'joinDate'>, password: string) => void;
   onDeleteEmployee: (id: string) => void;
 }
 
@@ -22,6 +22,7 @@ export default function EmployeeDirectory({
   const [role, setRole] = useState<Employee['role']>('Kasir');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Employee['status']>('Aktif');
+  const [password, setPassword] = useState('');
 
   const filteredEmployees = employees.filter((emp) => {
     const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -44,13 +45,14 @@ export default function EmployeeDirectory({
       email: email.trim(),
       status,
       photoUrl
-    });
+    }, password);
 
     // Reset Form
     setName('');
     setEmail('');
     setRole('Kasir');
     setStatus('Aktif');
+    setPassword('');
     setShowModal(false);
   };
 
@@ -128,14 +130,20 @@ export default function EmployeeDirectory({
                   <tr key={emp.id} className="hover:bg-white/10 transition-colors">
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full overflow-hidden border border-white/30 bg-white/25 shrink-0">
-                          <img
-                            src={emp.photoUrl}
-                            alt={emp.name}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+<div className="w-8 h-8 rounded-full overflow-hidden border border-white/30 bg-white/25 shrink-0">
+                            {emp.photoUrl ? (
+                              <img
+                                src={emp.photoUrl}
+                                alt={emp.name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs font-bold text-ink-muted">
+                                {emp.name.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
                         <div>
                           <p className="font-extrabold text-ink leading-snug">{emp.name}</p>
                           <p className="text-[10px] text-ink-muted font-mono">{emp.id}</p>
@@ -252,6 +260,19 @@ export default function EmployeeDirectory({
                     <option value="Nonaktif">Nonaktif</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-ink-secondary mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Minimal 6 karakter"
+                  className="w-full bg-white/15 border border-white/30 rounded-xl px-3 py-2.5 focus:outline-none focus:border-teal text-ink font-semibold"
+                />
               </div>
             </div>
 
