@@ -30,7 +30,7 @@ Dashboard ini hanya untuk role internal — **bukan customer**:
 
 ```bash
 npm install        # install dependencies
-npm run dev        # start dev server di localhost:3000
+npm run dev        # start dev server di localhost:3001
 npm run build      # build production
 npm run lint       # typecheck (tsc --noEmit)
 ```

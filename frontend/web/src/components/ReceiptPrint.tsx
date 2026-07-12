@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Transaction } from '../types';
 import { ArrowLeft, Printer, Sparkles, MessageSquare, Loader2 } from 'lucide-react';
 import { showToast } from './Toast';
+import { API_BASE } from '../services/api';
 
 interface ReceiptPrintProps {
   transaction: Transaction | null;
@@ -31,7 +32,7 @@ export default function ReceiptPrint({ transaction, onBack }: ReceiptPrintProps)
       const printId = transaction.id_transaksi || transaction.id;
       const authRole = localStorage.getItem('lw_auth_role');
       const token = authRole ? localStorage.getItem(`lw_token_${authRole}`) : null;
-      const response = await fetch(`http://localhost:3000/api/v1/transaksi/${printId}/pdf`, {
+      const response = await fetch(`${API_BASE}/transaksi/${printId}/pdf`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) {
