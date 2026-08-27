@@ -1,62 +1,62 @@
-# Sistem Manajemen Laundry Hybrid
+# Hybrid Laundry Management System
 
-> Aplikasi manajemen laundry hibrid (Kiloan & Koin) berbasis mobile dan web.
+> A mobile and web-based hybrid laundry management application (Kilo & Coin).
 
-Sistem ini mendukung dua jenis layanan utama:
-- **Kiloan**: Customer mengirim pakaian, dijemput oleh kurir atau diantar sendiri
-- **Koin**: Customer datang ke outlet dan menggunakan mesin cuci sendiri
+The system supports two primary services:
+- **Kilo (Weight-based)**: Customers drop off their clothes or have them picked up by a courier.
+- **Coin (Self-Service)**: Customers visit the outlet and use the machines themselves.
 
 ---
 
-## Fitur Utama
+## Key Features
 
 ### Customer (Mobile App)
-- Registrasi dan autentikasi
-- Booking layanan kiloan dan koin
-- Pemilihan mesin cuci dan pengering (untuk layanan koin)
-- Tracking status cucian secara real-time
-- Notifikasi otomatis terkait status pesanan
-- Riwayat transaksi
+- Registration and authentication
+- Book weight-based (Kilo) and self-service (Coin) laundry
+- Select washing machines and dryers (for Coin service)
+- Real-time order tracking
+- Automatic order status notifications
+- Transaction history
 
-### Kasir (Web Dashboard)
-- Proses transaksi pembayaran (cash/transfer/QRIS)
-- Cetak struk digital dalam format PDF
-- Rekap transaksi harian
-- Verifikasi pengambilan cucian
+### Cashier (Web Dashboard)
+- Process payments (Cash, Bank Transfer, QRIS)
+- Generate digital receipts (PDF)
+- Daily transaction summary
+- Verify order pickups
 
 ### Admin (Web Dashboard)
-- CRUD layanan laundry
-- CRUD mesin cuci
-- Konfirmasi atau penolakan booking
-- Pembaruan status cucian
-- Manajemen shift karyawan
-- Pengiriman notifikasi ke customer
+- Manage laundry services (CRUD)
+- Manage washing/drying machines (CRUD)
+- Approve or reject bookings
+- Update order statuses
+- Manage employee shifts
+- Send notifications to customers
 
 ### Owner (Web Dashboard)
-- Dashboard ringkasan bisnis
-- Laporan keuangan dengan filter periode
-- Export laporan ke format PDF atau Excel
-- Monitoring transaksi real-time
-- Akses audit log aktivitas sistem
+- Business overview dashboard
+- Financial reports with date filtering
+- Export reports to PDF or Excel
+- Real-time transaction monitoring
+- System audit logs
 
 ---
 
 ## Tech Stack
 
-| Layer | Teknologi |
+| Layer | Technology |
 |-------|-----------|
 | Mobile | React Native + Expo |
 | Web | Vite + React + TypeScript |
 | Backend | Node.js + Express.js |
 | Database | PostgreSQL |
-| Autentikasi | JWT + bcrypt |
+| Authentication | JWT + bcrypt |
 | PDF Generation | pdfkit |
 | Excel Export | exceljs |
 | Email Service | Mailgun |
 
 ---
 
-## Struktur Proyek
+## Project Structure
 
 ```
 laundry-system/
@@ -89,14 +89,14 @@ laundry-system/
 
 ---
 
-## Instalasi
+## Setup & Installation
 
-### Prasyarat
+### Prerequisites
 
 - Node.js >= 18
 - PostgreSQL >= 16
-- npm atau yarn
-- Expo CLI (untuk mobile app)
+- npm or yarn
+- Expo CLI (for mobile app)
 
 ### 1. Database
 
@@ -122,7 +122,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Server berjalan di http://localhost:3000
+The server will run at http://localhost:3000
 
 ### 3. Mobile App
 
@@ -132,7 +132,7 @@ npm install
 npm start
 ```
 
-Buka menggunakan Expo Go.
+Open and test using Expo Go.
 
 ### 4. Web Dashboard
 
@@ -142,13 +142,13 @@ npm install
 npm run dev
 ```
 
-Berjalan di http://localhost:5173
+Runs at http://localhost:5173
 
 ---
 
 ## Environment Variables
 
-Buat file `.env` di direktori `backend/` dengan konfigurasi berikut:
+Create a `.env` file in the `backend/` directory with the following configuration:
 
 ```env
 # Server
@@ -180,7 +180,7 @@ MAILGUN_DOMAIN=your_mailgun_domain
 
 Base URL: `http://localhost:3000/api/v1`
 
-### Contoh Penggunaan
+### Quick Start Examples
 
 **Register:**
 ```bash
@@ -204,102 +204,92 @@ curl -X POST http://localhost:3000/api/v1/auth/login \
   }'
 ```
 
-### Daftar Endpoint
+### Endpoint List
 
-| Module | Method | Endpoint | Deskripsi |
-|--------|--------|----------|-----------|
-| Auth | POST | `/auth/register` | Registrasi customer |
+| Module | Method | Endpoint | Description |
+|--------|--------|----------|-------------|
+| Auth | POST | `/auth/register` | Register customer |
 | Auth | POST | `/auth/login` | Login |
-| Auth | GET | `/auth/me` | Data user saat ini |
+| Auth | GET | `/auth/me` | Current user details |
 | Auth | POST | `/auth/forgot-password` | Reset password via email |
-| Services | GET | `/services` | Daftar layanan |
-| Services | POST | `/services` | Tambah layanan (admin) |
-| Machines | GET | `/mesin` | Daftar mesin |
-| Machines | POST | `/mesin` | Tambah mesin (admin) |
-| Machines | PATCH | `/mesin/:id/status` | Ubah status mesin |
-| Bookings | GET | `/pemesanan` | Daftar booking |
-| Bookings | POST | `/pemesanan` | Buat booking |
-| Bookings | PATCH | `/pemesanan/:id/status` | Update status booking |
-| Transactions | GET | `/transaksi` | Daftar transaksi |
-| Transactions | POST | `/transaksi` | Buat transaksi |
-| Transactions | PATCH | `/transaksi/:id/pay` | Konfirmasi pembayaran |
-| Transactions | GET | `/transaksi/:id/pdf` | Download struk PDF |
-| Shifts | GET | `/shifts` | Daftar shift |
-| Shifts | POST | `/shifts` | Buat shift (admin) |
-| Notifications | GET | `/notifications` | Daftar notifikasi |
-| Reports | GET | `/reports/finance` | Laporan keuangan |
-| Audit | GET | `/audit` | Audit log |
+| Services | GET | `/services` | List laundry services |
+| Services | POST | `/services` | Create new service (admin) |
+| Machines | GET | `/mesin` | List machines |
+| Machines | POST | `/mesin` | Create new machine (admin) |
+| Machines | PATCH | `/mesin/:id/status` | Update machine status |
+| Bookings | GET | `/pemesanan` | List bookings |
+| Bookings | POST | `/pemesanan` | Create booking |
+| Bookings | PATCH | `/pemesanan/:id/status` | Update booking status |
+| Transactions | GET | `/transaksi` | List transactions |
+| Transactions | POST | `/transaksi` | Create transaction |
+| Transactions | PATCH | `/transaksi/:id/pay` | Confirm payment |
+| Transactions | GET | `/transaksi/:id/pdf` | Download PDF receipt |
+| Shifts | GET | `/shifts` | List shifts |
+| Shifts | POST | `/shifts` | Create shift (admin) |
+| Notifications | GET | `/notifications` | List notifications |
+| Reports | GET | `/reports/finance` | Financial reports |
+| Audit | GET | `/audit` | Audit logs |
 
-Dokumentasi lengkap: [docs/api-spec.md](docs/api-spec.md)
+Full documentation: [docs/api-spec.md](docs/api-spec.md)
 
 ---
 
 ## Database Schema
 
-Sistem menggunakan 12 tabel dengan struktur relasional:
+The system uses 12 relational tables:
 
-| Tabel | Deskripsi |
-|-------|-----------|
-| `customer` | Data pelanggan |
-| `karyawan` | Data admin dan kasir |
-| `owner` | Data pemilik usaha |
-| `mesin_cuci` | Daftar mesin cuci dan pengering |
-| `layanan` | Daftar layanan (kiloan/koin) |
-| `pemesanan` | Data booking/pesanan |
-| `transaksi` | Data pembayaran |
-| `booking_mesin` | Relasi pemesanan-mesin (many-to-many) |
-| `shifts` | Jadwal shift kerja |
-| `shift_karyawan` | Relasi shift-karyawan (many-to-many) |
-| `notifikasi` | Notifikasi untuk customer |
-| `audit_log` | Log aktivitas sistem |
+| Table | Description |
+|-------|-------------|
+| `customer` | Customer accounts |
+| `karyawan` | Cashier and Admin accounts |
+| `owner` | Owner accounts |
+| `mesin_cuci` | List of washing machines and dryers |
+| `layanan` | Available services (Kilo/Coin) |
+| `pemesanan` | Order and booking records |
+| `transaksi` | Payments and transactions |
+| `booking_mesin` | Many-to-many relation for booking and machines |
+| `shifts` | Shift schedules |
+| `shift_karyawan` | Many-to-many relation for employees and shifts |
+| `notifikasi` | System notifications for customers |
+| `audit_log` | Action logging for audit |
 
-Detail schema: [database/schema.sql](database/schema.sql)
+Schema details: [database/schema.sql](database/schema.sql)
 
 ---
 
-## Role Pengguna
+## User Roles
 
-| Role | Platform | Akses Utama |
+| Role | Platform | Main Access |
 |------|----------|-------------|
-| Customer | Mobile | Booking, tracking, riwayat |
-| Kasir | Web | Transaksi, pembayaran |
-| Admin | Web | Kelola data master, shift |
-| Owner | Web | Laporan, monitoring |
+| Customer | Mobile | Bookings, order tracking, history |
+| Cashier | Web | Order processing, payments |
+| Admin | Web | Master data, scheduling |
+| Owner | Web | Reports, monitoring |
 
 ---
 
-## Dokumentasi
+## Documentation
 
-| Dokumen | Deskripsi |
+| Document | Description |
 |---------|-----------|
 | [SRS](docs/) | Software Requirements Specification |
-| [API Spec](docs/api-spec.md) | Spesifikasi API endpoints |
-| [Module Docs](docs/modules/) | Dokumentasi detail per module |
+| [API Spec](docs/api-spec.md) | API endpoints specification |
+| [Module Docs](docs/modules/) | Detailed module-by-module docs |
 
 ---
 
-## Kontribusi
 
-1. Fork repository ini
-2. Buat branch baru: `git checkout -b feature/nama-fitur`
-3. Commit perubahan: `git commit -m 'Tambah fitur baru'`
-4. Push ke branch: `git push origin feature/nama-fitur`
-5. Buat Pull Request
+## Development Team
 
----
 
-## Tim Pengembang
-
-**Kelompok 5 — Rekayasa Perangkat Lunak 2026**
-
-| Nama | NIM | Tugas |
-|------|-----|-------|
-| Darrel Rafa Syahmi | 2526214003 | Backend API, Penggabungan |
-| Alan Farel Pradana | 2526214018 | Frontend Mobile |
-| Andini Rihadatul Aisya | 2526214012 | Database Design |
+| Username | Task |
+|----------|-------|
+| DrealmZz | Lead, Backend API, Integration |
+| skyrel11 | UI/UX, Frontend Mobile |
+| chocoberryy |  Database Design |
 
 ---
 
-## Lisensi
+## License
 
-Proyek ini dikembangkan untuk keperluan akademis mata kuliah Rekayasa Perangkat Lunak.
+This project was developed for academic purposes under the Software Engineering course.
