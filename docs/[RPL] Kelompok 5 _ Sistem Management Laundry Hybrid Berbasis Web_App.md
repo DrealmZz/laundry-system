@@ -9,13 +9,7 @@ Program Studi : Rekayasa Keamanan Siber
 Mata Kuliah : Rekayasa Perangkat Lunak
 
 Disusun oleh:  
-Darrel Rafa Syahmi / 2526214003
 
-Alan Farel Pradana / 2526214018
-
-Andini Rihadatul Aisya / 2526214012
-
-Dina Cahyani Mewilawati / 25262140
 
 Tahun : 2026
 
