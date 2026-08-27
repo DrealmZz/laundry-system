@@ -97,7 +97,7 @@ function mapTransactionFromBackend(t: any): Transaction {
     customerInitial: (t.customer_nama || t.nama_customer || 'C')[0].toUpperCase(),
     serviceName: t.nama_layanan || '',
     serviceType: jenisLayanan === 'kiloan' ? 'Kiloan' : 'Koin',
-    weightOrQty: t.berat_kg || 1,
+    weightOrQty: parseFloat(t.berat_kg) || 1,
     amount: parseFloat(t.total) || 0,
     status: mapTransactionStatus(t.status_pembayaran),
     time: d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
